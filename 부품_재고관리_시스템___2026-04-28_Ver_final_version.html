@@ -717,17 +717,36 @@ function drawOrd(){
     '<div class="kpi"><div class="kl">즉시 발주</div><div class="kv crit">'+ct+'건</div></div>'+
     '<div class="kpi"><div class="kl">발주 검토</div><div class="kv" style="color:var(--amber)">'+wn+'건</div></div>';
   document.getElementById('tb-ord').innerHTML=list.map(function(p){
-    var sv=st(p); var need=Math.max(1,p.safe_stock*2-p.stock);
+    var sv=st(p); var need=p.ord_qty!=null?p.ord_qty:Math.max(1,p.safe_stock*2-p.stock);
+    var sup=p.supplier||'';
     return '<tr>'+
       '<td>'+ptag(p.product)+'</td>'+
       '<td class="mono">'+(p.part_num||'—')+'</td>'+
       '<td style="max-width:180px" title="'+p.name+'">'+p.name+'</td>'+
       '<td><span class="badge bgr">'+p.cat+'</span></td>'+
       '<td style="font-weight:600;color:'+(sv==='crit'?'var(--red)':'var(--amber)')+'">'+p.stock+'</td>'+
-      '<td style="text-align:center">'+need+'</td>'+
-      '<td>'+(p.supplier||'—')+'</td>'+
+      '<td style="text-align:center">'+
+        '<input type="number" min="1" value="'+need+'" '+
+        'style="width:70px;height:28px;text-align:center;font-weight:600;border-radius:6px;border:1.5px solid var(--blue);padding:0 4px" '+
+        'onchange="saveOrdQty('+p._id+',this.value)">'+
+      '</td>'+
+      '<td>'+
+        '<input type="text" value="'+sup+'" placeholder="발주처 입력" '+
+        'style="width:130px;height:28px;border-radius:6px;border:1px solid var(--bd);padding:0 6px;font-size:12px" '+
+        'onchange="saveSupplier('+p._id+',this.value)">'+
+      '</td>'+
       '<td><span class="badge '+stC(sv)+'">'+(sv==='crit'?'&#128308; 즉시':'&#128993; 검토')+'</span></td></tr>';
   }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--tx2);padding:16px">발주 필요 항목 없음 &#10003;</td></tr>';
+}
+
+function saveOrdQty(id, val){
+  var p=parts.find(function(p){return p._id===id;});
+  if(p){ p.ord_qty=Math.max(1,parseInt(val)||1); saveToStorage(); showToast('발주수량 저장 완료','#3B6D11'); }
+}
+
+function saveSupplier(id, val){
+  var p=parts.find(function(p){return p._id===id;});
+  if(p){ p.supplier=val.trim(); saveToStorage(); showToast('발주처 저장 완료','#3B6D11'); }
 }
 
 // ── 도면/문서 ────────────────────────────────────────────
