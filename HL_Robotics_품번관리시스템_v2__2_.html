@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HL Robotics 품번 · Spec 관리 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #1a1e24;
+    --border: #252a32;
+    --border2: #2e3540;
+    --accent: #00d4ff;
+    --accent2: #0099cc;
+    --accent-dim: rgba(0,212,255,0.12);
+    --accent-glow: rgba(0,212,255,0.25);
+    --green: #00ff9d;
+    --green-dim: rgba(0,255,157,0.1);
+    --orange: #ff6b35;
+    --orange-dim: rgba(255,107,53,0.1);
+    --red: #ff4757;
+    --red-dim: rgba(255,71,87,0.1);
+    --yellow: #ffd700;
+    --yellow-dim: rgba(255,215,0,0.1);
+    --text: #e8ecf0;
+    --text2: #8b96a5;
+    --text3: #5a6472;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { flex: 1; }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .logo-badge {
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    letter-spacing: 0.1em;
+    border-radius: 2px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    color: var(--text3);
+    font-size: 13px;
+    font-family: var(--mono);
+    margin-top: 4px;
+  }
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .stat {
+    text-align: right;
+  }
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 32px;
+    background: var(--surface);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+  .tab {
+    padding: 9px 22px;
+    border: none;
+    background: none;
+    color: var(--text3);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .tab:hover { color: var(--text); background: var(--surface2); }
+  .tab.active {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Form elements */
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  input, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  input::placeholder { color: var(--text3); font-size: 13px; }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b96a5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+    cursor: pointer;
+  }
+  select option { background: var(--surface2); color: var(--text); }
+
+  /* Result box */
+  .result {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 16px;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .result.found {
+    border-color: var(--green);
+    background: var(--green-dim);
+    box-shadow: 0 0 0 1px var(--green), inset 0 0 20px rgba(0,255,157,0.03);
+  }
+  .result.not-found {
+    border-color: var(--red);
+    background: var(--red-dim);
+  }
+  .result.generating {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .result-inner { width: 100%; }
+  .result-pn {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .result-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .result-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .tag-product { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .tag-block { background: rgba(255,215,0,0.1); color: var(--yellow); border: 1px solid rgba(255,215,0,0.2); }
+  .tag-serial { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
+  .tag-new { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,107,53,0.3); }
+
+  .empty-state {
+    color: var(--text3);
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+
+  /* Generate form */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    #adminContent [style*="grid-template-columns:100px"] {
+      grid-template-columns: 1fr 1fr !important;
+    }
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 6px;
+    border: none;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .btn-primary:hover { background: #00b8d9; transform: translateY(-1px); }
+  .btn-success {
+    background: var(--green);
+    color: var(--bg);
+  }
+  .btn-success:hover { background: #00e68a; transform: translateY(-1px); }
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  /* New number preview */
+  .new-pn-display {
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 20px var(--accent-glow);
+    margin: 8px 0;
+  }
+
+  /* Database table */
+  .db-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .db-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .db-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .db-table tr:last-child td { border-bottom: none; }
+  .db-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .db-table .pn-cell {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 14px;
+  }
+  .db-table .name-cell { color: var(--text); }
+  .db-table .date-cell {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .empty-db {
+    text-align: center;
+    padding: 48px;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .empty-db svg { margin-bottom: 12px; opacity: 0.3; }
+
+  /* Notification */
+  .notif {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 100;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 340px;
+  }
+  .notif.show { transform: translateY(0); opacity: 1; }
+  .notif.success { background: var(--green); color: var(--bg); }
+  .notif.error { background: var(--red); color: white; }
+  .notif.info { background: var(--accent); color: var(--bg); }
+
+  /* Part number format guide */
+  .format-guide {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .format-guide .format-label {
+    color: var(--text3);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .format-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .fmt-block {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .fmt-product { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .fmt-sep { color: var(--text3); font-size: 20px; font-weight: 300; margin: 0 2px; }
+  .fmt-block-code { background: rgba(255,215,0,0.1); color: var(--yellow); border: 1px solid rgba(255,215,0,0.2); }
+  .fmt-serial { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
+  .fmt-desc {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .fmt-desc-item { display: flex; align-items: center; gap: 6px; }
+  .fmt-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* Search input row */
+  .search-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .search-row .field-wrap { flex: 1; }
+  .search-row .btn { flex-shrink: 0; height: 46px; }
+
+  /* Block code input hint */
+  .hint { font-size: 11px; color: var(--text3); margin-top: 6px; font-family: var(--mono); }
+
+  /* Loader */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+  }
+
+  /* Confirm box */
+  .confirm-box {
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 24px;
+    margin-top: 16px;
+    display: none;
+  }
+  .confirm-box.show { display: block; }
+  .confirm-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .confirm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .confirm-row:last-of-type { border-bottom: none; }
+  .confirm-key { color: var(--text3); font-family: var(--mono); font-size: 12px; }
+  .confirm-val { color: var(--text); font-weight: 500; }
+  .confirm-pn { color: var(--accent); font-family: var(--mono); font-weight: 700; font-size: 18px; }
+
+  /* Scrollable table */
+  .table-wrap { overflow-x: auto; }
+  .db-filter-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .db-filter-row input,
+  .db-filter-row select {
+    width: auto;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .db-filter-row input { flex: 1; min-width: 180px; }
+  .db-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  /* Blinking cursor */
+  @keyframes blink { 50% { opacity: 0; } }
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--accent);
+    animation: blink 1s step-end infinite;
+    vertical-align: text-bottom;
+    margin-left: 2px;
+  }
+
+  /* Fade in */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .panel.active { animation: fadeIn 0.2s ease; }
+
+  /* Spec specific */
+  .tag-spec-res { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .tag-spec-rms { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(255,215,0,0.3); }
+  .tag-spec-cat { background: rgba(160,100,255,0.12); color: #b47aff; border: 1px solid rgba(160,100,255,0.25); }
+  .tag-spec-serial { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
+
+  .cat-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    margin-bottom: 6px; font-size: 13px;
+  }
+  .cat-item-code {
+    font-family: var(--mono); font-weight: 700; font-size: 14px;
+    color: var(--accent); min-width: 36px;
+  }
+  .cat-item-name { flex: 1; color: var(--text); }
+  .cat-item-desc { font-size: 11px; color: var(--text3); }
+  .cat-item-del {
+    background: none; border: none; color: var(--text3); cursor: pointer;
+    font-size: 16px; padding: 2px 6px; border-radius: 3px; transition: 0.1s;
+  }
+  .cat-item-del:hover { color: var(--red); background: var(--red-dim); }
+  .spec-section-divider {
+    margin: 32px 0 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .spec-section-divider span {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--text3); white-space: nowrap;
+  }
+  .spec-section-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-row">
+        <span class="logo-badge">HL ROBOTICS</span>
+      </div>
+      <h1>품번 · Spec 관리 시스템</h1>
+      <div class="subtitle">Part Number &amp; Engineering Spec Management System · v2.1</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-val" id="totalParts">—</div>
+        <div class="stat-label">등록 품번</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="newPartsCount">—</div>
+        <div class="stat-label">신규 등록</div>
+      </div>
+      <div class="stat" style="border-left:1px solid var(--border); padding-left:24px;">
+        <div class="stat-val" id="specCount" style="color:var(--yellow);">—</div>
+        <div class="stat-label">Spec 품번</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <!-- Section divider -->
+  <div style="display:flex; gap:12px; margin-bottom:12px; align-items:center;">
+    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--text3);">제품 품번</div>
+    <div style="flex:1; height:1px; background:var(--border);"></div>
+  </div>
+  <div class="tabs" id="tabs-parts">
+    <button class="tab active" onclick="switchTab('search')">🔍 품번 조회</button>
+    <button class="tab" onclick="switchTab('generate')">✨ 신규 생성</button>
+    <button class="tab" onclick="switchTab('database')">📋 등록 현황</button>
+  </div>
+
+  <div style="display:flex; gap:12px; margin-bottom:12px; margin-top:24px; align-items:center;">
+    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--text3);">Spec 품번</div>
+    <div style="flex:1; height:1px; background:var(--border);"></div>
+  </div>
+  <div class="tabs" id="tabs-spec">
+    <button class="tab spec-tab" onclick="switchSpecTab('spec-search')">🔍 Spec 조회</button>
+    <button class="tab spec-tab" onclick="switchSpecTab('spec-generate')">✨ 신규 생성</button>
+    <button class="tab spec-tab" onclick="switchSpecTab('spec-database')">📋 등록 현황</button>
+    <button class="tab spec-tab" onclick="switchSpecTab('spec-admin')">⚙️ 관리자</button>
+  </div>
+
+  <!-- SEARCH PANEL -->
+  <div class="panel active" id="panel-search">
+    <div class="card">
+      <div class="card-title">품번 조회</div>
+      
+      <div class="format-guide">
+        <div class="format-label">품번 형식</div>
+        <div class="format-row">
+          <div class="fmt-block fmt-product">RX</div>
+          <div class="fmt-sep">-</div>
+          <div class="fmt-block fmt-block-code">XXX</div>
+          <div class="fmt-sep">-</div>
+          <div class="fmt-block fmt-serial">XXX</div>
+        </div>
+        <div class="fmt-desc">
+          <div class="fmt-desc-item">
+            <div class="fmt-dot" style="background:var(--accent)"></div>
+            <span>제품군 코드 (RP/RD/RG/RZ)</span>
+          </div>
+          <div class="fmt-desc-item">
+            <div class="fmt-dot" style="background:var(--yellow)"></div>
+            <span>블록 코드 (000~999)</span>
+          </div>
+          <div class="fmt-desc-item">
+            <div class="fmt-dot" style="background:var(--green)"></div>
+            <span>시리얼 번호 (000~999)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <div class="field-wrap">
+          <label>품번 입력</label>
+          <input type="text" id="searchInput" placeholder="예: RP-130-000" 
+            oninput="onSearchInput(this.value)"
+            onkeydown="if(event.key==='Enter') doSearch()">
+        </div>
+        <button class="btn btn-primary" onclick="doSearch()">조회</button>
+      </div>
+
+      <div class="result" id="searchResult">
+        <span class="empty-state">품번을 입력하고 조회 버튼을 누르세요</span>
+      </div>
+    </div>
+
+    <!-- Quick reference -->
+    <div class="card">
+      <div class="card-title">제품군 코드표</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent)">RP</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:2px;">PARKIE</div>
+        </div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent)">RD</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:2px;">DD-DRIVING</div>
+        </div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent)">RG</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:2px;">GOALIE</div>
+        </div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent)">RZ</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:2px;">COMMON PARTS</div>
+        </div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent)">RQ</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:2px;">QD-DRIVING</div>
+        </div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent)">RS</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:2px;">STANLEY</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GENERATE PANEL -->
+  <div class="panel" id="panel-generate">
+    <div class="card">
+      <div class="card-title">신규 품번 생성</div>
+
+      <div class="form-grid">
+        <div>
+          <label>제품군 선택</label>
+          <select id="genProduct" onchange="onGenChange()">
+            <option value="">— 선택 —</option>
+            <option value="RP">RP · PARKIE</option>
+            <option value="RD">RD · DD-DRIVING</option>
+            <option value="RG">RG · GOALIE</option>
+            <option value="RZ">RZ · COMMON PARTS</option>
+            <option value="RQ">RQ · QD-DRIVING</option>
+            <option value="RS">RS · STANLEY</option>
+          </select>
+        </div>
+        <div>
+          <label>블록 코드 (000~999)</label>
+          <input type="number" id="genBlock" min="0" max="999" placeholder="예: 130"
+            oninput="onGenChange()">
+          <div class="hint" id="blockHint"></div>
+        </div>
+      </div>
+
+      <div>
+        <label>부품명 입력 <span style="font-weight:400; color:var(--text3)">(선택사항)</span></label>
+        <input type="text" id="genName" placeholder="예: WING BRACKET, LH" oninput="onGenChange()">
+      </div>
+
+      <div class="result generating" id="genResult" style="margin-top:20px; display:none;">
+        <div class="result-inner" id="genResultInner"></div>
+      </div>
+
+      <div class="confirm-box" id="confirmBox">
+        <div class="confirm-title">⚡ 신규 품번 등록 확인</div>
+        <div class="confirm-row">
+          <span class="confirm-key">품번</span>
+          <span class="confirm-pn" id="confirmPN">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-key">제품군</span>
+          <span class="confirm-val" id="confirmProduct">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-key">블록 코드</span>
+          <span class="confirm-val" id="confirmBlock">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-key">부품명</span>
+          <span class="confirm-val" id="confirmName">—</span>
+        </div>
+        <div class="btn-row" style="margin-top:20px;">
+          <button class="btn btn-success" onclick="confirmRegister()">✓ 등록 확정</button>
+          <button class="btn btn-ghost" onclick="cancelRegister()">취소</button>
+        </div>
+      </div>
+
+      <div class="btn-row" id="genBtnRow">
+        <button class="btn btn-primary" onclick="generateNumber()" id="genBtn">품번 생성</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">블록 코드 사용 현황</div>
+      <div id="blockUsageArea">
+        <div style="color:var(--text3); font-size:13px; font-family:var(--mono);">제품군을 선택하면 블록 코드 현황을 확인할 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATABASE PANEL -->
+  <div class="panel" id="panel-database">
+    <div class="card">
+      <div class="card-title">신규 등록 품번 목록</div>
+      <div class="db-filter-row">
+        <input type="text" id="dbSearch" placeholder="품번 또는 품명 검색..." oninput="renderDB()">
+        <select id="dbFilter" onchange="renderDB()">
+          <option value="">전체 제품군</option>
+          <option value="RP">RP</option>
+          <option value="RD">RD</option>
+          <option value="RG">RG</option>
+          <option value="RZ">RZ</option>
+          <option value="RQ">RQ</option>
+          <option value="RS">RS</option>
+        </select>
+      </div>
+      <div class="db-count" id="dbCount"></div>
+      <div class="table-wrap" id="dbTableWrap">
+        <div class="empty-db">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+          <div>아직 신규 등록된 품번이 없습니다</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+  <!-- SPEC SEARCH PANEL -->
+  <div class="panel" id="panel-spec-search">
+    <div class="card">
+      <div class="card-title">Spec 품번 조회</div>
+      <div class="format-guide">
+        <div class="format-label">Spec 품번 형식</div>
+        <div class="format-row">
+          <div class="fmt-block fmt-product">RES</div>
+          <div class="fmt-sep">-</div>
+          <div class="fmt-block fmt-block-code">C1</div>
+          <div class="fmt-sep">-</div>
+          <div class="fmt-block fmt-serial">001</div>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:20px; flex-wrap:wrap;">
+          <div style="font-size:11px; color:var(--text3); display:flex; align-items:center; gap:6px;">
+            <div style="width:8px;height:8px;border-radius:2px;background:var(--accent)"></div>
+            RES = Robot Engineering Standard
+          </div>
+          <div style="font-size:11px; color:var(--text3); display:flex; align-items:center; gap:6px;">
+            <div style="width:8px;height:8px;border-radius:2px;background:var(--green)"></div>
+            카테고리 코드 (예: C1=Connector)
+          </div>
+          <div style="font-size:11px; color:var(--text3); display:flex; align-items:center; gap:6px;">
+            <div style="width:8px;height:8px;border-radius:2px;background:rgba(0,255,157,0.6)"></div>
+            세부 번호 001~999
+          </div>
+        </div>
+      </div>
+      <div class="search-row">
+        <div class="field-wrap">
+          <label>Spec 품번 입력</label>
+          <input type="text" id="specSearchInput" placeholder="예: RES-C1-001 또는 RMS-L1-002"
+            oninput="onSpecSearchInput(this.value)"
+            onkeydown="if(event.key==='Enter') doSpecSearch()">
+        </div>
+        <button class="btn btn-primary" onclick="doSpecSearch()">조회</button>
+      </div>
+      <div class="result" id="specSearchResult">
+        <span class="empty-state">Spec 품번을 입력하고 조회 버튼을 누르세요</span>
+      </div>
+    </div>
+
+    <!-- Type reference cards -->
+    <div class="card">
+      <div class="card-title">Spec 유형 안내</div>
+      <div style="display:grid; grid-template-columns:1fr; gap:12px; max-width:360px;">
+        <div style="background:var(--surface2); border:1px solid rgba(0,212,255,0.2); border-radius:8px; padding:18px;">
+          <div style="font-family:var(--mono); font-size:20px; font-weight:700; color:var(--accent); margin-bottom:4px;">RES</div>
+          <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px;">Robot Engineering Standard</div>
+          <div style="font-size:12px; color:var(--text3);">설계·엔지니어링 기준 규격</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;" id="specCategoryReference"></div>
+    </div>
+  </div>
+
+  <!-- SPEC GENERATE PANEL -->
+  <div class="panel" id="panel-spec-generate">
+    <div class="card">
+      <div class="card-title">신규 Spec 품번 생성</div>
+      <div class="form-grid">
+        <div>
+          <label>Spec 유형</label>
+          <select id="specType" onchange="onSpecGenChange()">
+            <option value="">— 선택 —</option>
+            <option value="RES">RES · Robot Engineering Standard</option>
+          </select>
+        </div>
+        <div>
+          <label>카테고리 코드</label>
+          <select id="specCategory" onchange="onSpecGenChange()">
+            <option value="">— Spec 유형 먼저 선택 —</option>
+          </select>
+          <div class="hint" id="specCatDesc"></div>
+        </div>
+      </div>
+      <div>
+        <label>Spec 명칭 <span style="font-weight:400; color:var(--text3)">(필수)</span></label>
+        <input type="text" id="specName" placeholder="예: CONNECTOR, TE 4P 2.0mm PITCH" oninput="onSpecGenChange()">
+      </div>
+      <div style="margin-top:16px;">
+        <label>비고 <span style="font-weight:400; color:var(--text3)">(선택사항)</span></label>
+        <input type="text" id="specNote" placeholder="버전, 적용 제품 등 추가 정보">
+      </div>
+
+      <div class="result generating" id="specGenResult" style="margin-top:20px; display:none;">
+        <div class="result-inner" id="specGenResultInner"></div>
+      </div>
+
+      <div class="confirm-box" id="specConfirmBox">
+        <div class="confirm-title">⚡ 신규 Spec 품번 등록 확인</div>
+        <div class="confirm-row">
+          <span class="confirm-key">품번</span>
+          <span class="confirm-pn" id="specConfirmPN">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-key">유형</span>
+          <span class="confirm-val" id="specConfirmType">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-key">카테고리</span>
+          <span class="confirm-val" id="specConfirmCat">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-key">명칭</span>
+          <span class="confirm-val" id="specConfirmName">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-key">비고</span>
+          <span class="confirm-val" id="specConfirmNote">—</span>
+        </div>
+        <div class="btn-row" style="margin-top:20px;">
+          <button class="btn btn-success" onclick="confirmSpecRegister()">✓ 등록 확정</button>
+          <button class="btn btn-ghost" onclick="cancelSpecRegister()">취소</button>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generateSpecNumber()">Spec 품번 생성</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">카테고리별 사용 현황</div>
+      <div id="specCatUsageArea">
+        <div style="color:var(--text3); font-size:13px; font-family:var(--mono);">Spec 유형을 선택하면 카테고리 현황을 확인할 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEC DATABASE PANEL -->
+  <div class="panel" id="panel-spec-database">
+    <div class="card">
+      <div class="card-title">Spec 등록 현황</div>
+      <div class="db-filter-row">
+        <input type="text" id="specDbSearch" placeholder="품번 또는 명칭 검색..." oninput="renderSpecDB()">
+        <select id="specDbTypeFilter" onchange="renderSpecDB()">
+          <option value="">전체 유형</option>
+          <option value="RES">RES</option>
+        </select>
+        <select id="specDbCatFilter" onchange="renderSpecDB()">
+          <option value="">전체 카테고리</option>
+        </select>
+      </div>
+      <div class="db-count" id="specDbCount"></div>
+      <div class="table-wrap" id="specDbTableWrap">
+        <div class="empty-db">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <div>아직 등록된 Spec 품번이 없습니다</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEC ADMIN PANEL -->
+  <div class="panel" id="panel-spec-admin">
+
+    <!-- Login card -->
+    <div class="card" id="adminLoginBox">
+      <div class="card-title">🔐 관리자 로그인</div>
+      <div style="max-width:400px;">
+        <p style="font-size:13px; color:var(--text3); margin-bottom:20px;">카테고리 코드를 추가·삭제하려면 관리자 권한이 필요합니다.</p>
+        <label>관리자 비밀번호</label>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+          <input type="password" id="adminPwInput" placeholder="비밀번호 입력"
+            onkeydown="if(event.key==='Enter') adminLogin()">
+          <button class="btn btn-primary" onclick="adminLogin()" style="flex-shrink:0; height:46px; padding:0 28px;">로그인</button>
+        </div>
+        <div class="hint">기본 비밀번호: <span style="font-family:var(--mono); color:var(--accent);">hlrobotics</span></div>
+      </div>
+    </div>
+
+    <!-- Admin content (shown after login) -->
+    <div id="adminContent" style="display:none;">
+
+      <!-- Top bar -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding:14px 20px; background:var(--green-dim); border:1px solid rgba(0,255,157,0.25); border-radius:8px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="color:var(--green); font-size:16px;">✓</span>
+          <span style="font-size:13px; color:var(--green); font-weight:600;">관리자 모드 활성화</span>
+        </div>
+        <button class="btn btn-ghost" onclick="adminLogout()" style="padding:7px 16px; font-size:12px;">로그아웃</button>
+      </div>
+
+      <!-- RES Category card -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title" style="color:var(--accent);">RES 카테고리 · Robot Engineering Standard</div>
+
+        <!-- Add form -->
+        <div style="background:var(--surface2); border:1px solid var(--border2); border-radius:8px; padding:18px; margin-bottom:20px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text3); margin-bottom:14px;">새 카테고리 추가</div>
+          <div style="display:grid; grid-template-columns:100px 1fr 1fr auto; gap:10px; align-items:end;">
+            <div>
+              <label>코드</label>
+              <input type="text" id="newResCatCode" placeholder="C2" maxlength="4"
+                style="font-size:14px; font-weight:700; text-align:center; letter-spacing:0.05em;"
+                oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div>
+              <label>카테고리 명칭 <span style="color:var(--red);">*</span></label>
+              <input type="text" id="newResCatName" placeholder="예: Caster"
+                onkeydown="if(event.key==='Enter') addCategory('RES')">
+            </div>
+            <div>
+              <label>설명 (선택)</label>
+              <input type="text" id="newResCatDesc" placeholder="예: 캐스터 규격"
+                onkeydown="if(event.key==='Enter') addCategory('RES')">
+            </div>
+            <div>
+              <button class="btn btn-primary" onclick="addCategory('RES')" style="height:46px; padding:0 20px; white-space:nowrap;">
+                + 추가
+              </button>
+            </div>
+          </div>
+          <div style="margin-top:10px; font-size:11px; color:var(--text3);">
+            코드 형식: 알파벳 1~2자 + 숫자 1~2자 &nbsp;·&nbsp; 예) C1, C2, L1, S2, AB1
+          </div>
+        </div>
+
+        <!-- Category list -->
+        <div id="resCatList"></div>
+      </div>
+
+      <!-- Password change card -->
+      <div class="card">
+        <div class="card-title">🔑 비밀번호 변경</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:end; max-width:520px;">
+          <div>
+            <label>새 비밀번호</label>
+            <input type="password" id="newPw1" placeholder="새 비밀번호 입력">
+          </div>
+          <div>
+            <label>비밀번호 확인</label>
+            <input type="password" id="newPw2" placeholder="동일하게 입력"
+              onkeydown="if(event.key==='Enter') changeAdminPw()">
+          </div>
+          <button class="btn btn-ghost" onclick="changeAdminPw()" style="height:46px; padding:0 20px;">변경</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<!-- Notification -->
+<div class="notif" id="notif"></div>
+
+<script>
+// =============================================
+// DATA
+// =============================================
+const FLAT_DB = {"RP-010-000":"ROBOT ASSY, PARKIE 90MM","RP-010-001":"ROBOT ASSY, PARKIE MVP2","RP-020-000":"BODY ASSEMBLY","RP-030-000":"WING MODULE, LH","RP-030-001":"WING MODULE, RH","RP-030-002":"LIFT LH","RP-030-003":"LIFT RH","RP-050-000":"E-BOX ASSEMBLY, FRT","RP-050-001":"E-BOX ASSEMBLY RR","RP-050-002":"E-BOX ASSEMBLY, MID","RP-070-000":"FRT","RP-070-001":"RR","RP-130-000":"WORM REDUCER, LH","RP-130-001":"WORM REDUCER, RH","RP-131-000":"WORM WHEEL ASSEMBLY, LH","RP-131-001":"WORM WHEEL ASSEMBLY, RH","RP-132-000":"WING ASSEMBLY, LH","RP-132-001":"WING ASSEMBLY, RH","RP-132-002":"WING ASSEMBLY, RH-LIDAR","RP-133-000":"ROLLER ASSEMBLY, 25-144","RP-133-001":"ROLLER ASSEMBLY, 25-150.5","RP-133-002":"ROLLER ASSEMBLY, 25-45","RP-134-000":"CASTER ASSY, D80 H95","RP-135-000":"WING BODY ASSY, LH","RP-135-001":"WING BODY ASSY, RH","RP-140-000":"FRT V1","RP-140-001":"RR V1","RP-141-000":"FRT V1","RP-141-001":"RR V1","RP-142-000":"FRT V1","RP-142-001":"RR V1","RP-143-000":"V1","RP-144-000":"V1","RP-145-000":"V1","RP-146-000":"V1","RP-150-000":"SENSOR ASSEMBLY, 3D LIDAR FRT","RP-150-001":"SENSOR ASSEMBLY, CAMERA RR","RP-150-002":"SENSOR ASSEMBLY, 2D LIDAR LH","RP-150-003":"SENSOR ASSEMBLY, 2D LIDAR RH","RP-150-004":"SENSOR ASSEMBLY, 3D LIDAR RR(R)","RP-150-005":"SENSOR ASSEMBLY, CAMERA FRT","RP-150-006":"SENSOR ASSEMBLY, 3D LIDAR-2 FRT","RP-150-007":"SENSOR ASSEMBLY, 3D LIDAR-2 RR","RP-150-008":"SENSOR ASSEMBLY, 3D LIDAR-3 RR","RP-151-000":"ASSEMBLY, BATTERY CONNECTOR","RP-151-001":"ASSEMBLY, MANUAL CHARGER","RP-151-002":"ASSEMBLY, MARKER RH","RP-151-003":"ASSEMBLY, USB RELAY","RP-151-004":"ASSEMBLY, FAN","RP-152-000":"PANEL ASSEMBLY, D-FRT","RP-152-001":"PANEL ASSEMBLY, D-RR","RP-152-002":"PANEL ASSEMBLY, E-FRT","RP-152-003":"PANEL ASSEMBLY, RR(R)","RP-300-000":"Frame, FRT(L)","RP-300-001":"Frame, FRT(R)","RP-300-002":"Frame, RR(L)","RP-300-003":"Frame, RR(R)","RP-300-004":"Frame, FRT","RP-300-005":"Frame, RR","RP-300-006":"Frame, LH","RP-300-007":"Frame, RH","RP-300-008":"Frame, MID","RP-300-009":"FRAME, RIB FRT(L)","RP-300-010":"FRAME, RIB FRT(R)","RP-300-011":"FRAME, RIB RR(L)","RP-300-012":"FRAME, RIB RR(R)1","RP-300-013":"FRAME, RIB MID1","RP-300-014":"FRAME, RIB MID2","RP-300-015":"FRAME, RIB MID3","RP-300-016":"FRAME, RIB RR(R)2","RP-300-017":"FRAME","RP-300-019":"FRAME, RIB MID4","RP-301-000":"STOPPER, MID","RP-301-001":"STOPPER, CASTER_LH","RP-301-002":"STOPPER, CASTER_RH","RP-301-003":"STOPPER, CHARGE","RP-302-000":"Block, Tensioner","RP-302-001":"BLOCK, TILTING BASE","RP-302-002":"BLOCK, TILTING BODY","RP-302-003":"BLOCK, BRAKE","RP-302-004":"BLOCK, CASTER LWR","RP-303-000":"Cover, Marker","RP-303-001":"Cover, FRT","RP-303-002":"Cover, LWR","RP-303-003":"Cover, MID","RP-303-004":"Cover, Worm Input","RP-303-005":"Cover, Worm End","RP-303-007":"COVER, AOS","RP-303-008":"COVER, LED 01","RP-303-009":"COVER, Lift Pulley","RP-303-010":"COVER, Worm Pulley","RP-303-011":"COVER, E-FRT","RP-303-012":"COVER, MARKER RH","RP-303-013":"COVER, E-RR","RP-303-014":"COVER, USB RELAY","RP-303-015":"COVER, DESIGN COVER","RP-303-016":"COVER, BCU","RP-303-017":"COVER, BMS","RP-304-000":"HOUSING, AOS","RP-304-001":"HOUSING, WORM WHEEL","RP-304-003":"Housing, RR(L) marker","RP-304-006":"HOUSING, CASTER LWR","RP-304-007":"HOUSING, CASTER UPR","RP-304-008":"HOUSING, CASTER FLANGE","RP-304-009":"HOUSING, WORM(LH) LWR L","RP-304-010":"HOUSING, WORM(LH) LWR R","RP-304-011":"HOUSING, WORM(LH) UPR L","RP-304-012":"HOUSING, WORM(LH) UPR R","RP-304-013":"HOUSING, WORM(RH) LWR L","RP-304-014":"HOUSING, WORM(RH) LWR R","RP-304-015":"HOUSING, WORM(RH) UPR L","RP-304-016":"HOUSING, WORM(RH) UPR R","RP-305-000":"CASE, E-FRT","RP-305-001":"CASE, E-RR","RP-305-002":"CASE, E-MID","RP-305-003":"CASE, USB RELAY","RP-305-004":"CASE, MARKER RH","RP-305-005":"CASE, BCU","RP-305-006":"CASE, BMS","RP-305-010":"CASE, E-REAR LWR","RP-305-011":"CASE, E-REAR FRT","RP-305-012":"CASE, E-REAR RR(R)","RP-306-000":"GUIDE, CABLE INR 01","RP-306-001":"GUIDE, CABLE INR 02","RP-306-002":"GUIDE, CABLE INR 03","RP-306-003":"GUIDE, CABLE OTR 01","RP-306-004":"GUIDE, CABLE OTR 02","RP-310-000":"PLATE, DD BASE FRT","RP-310-001":"PLATE, DD BASE RR","RP-310-002":"Plate, Worm LH","RP-310-003":"Plate, Worm RH","RP-310-004":"PLATE, CASTER LWR","RP-311-000":"Panel, RR1","RP-311-001":"Panel, RR2","RP-311-002":"PANEL, E-FRT","RP-311-003":"PANEL, E-RR","RP-311-004":"PANEL, FRT","RP-314-000":"MARKER","RP-340-000":"BRACKET, FRAME","RP-340-001":"BRACKET, LIFT MOTOR LH","RP-340-002":"BRACKET, LIFT MOTOR RH","RP-340-003":"BRACKET, LIFT REDUCER","RP-340-004":"BRACKET, AOS HOUSING","RP-340-005":"BRACKET, AOS CABLE","RP-340-006":"BRACKET, MOTOR","RP-340-007":"BRAKCET, E-CASE","RP-340-008":"BRAKCET, BATTERY FRAME","RP-340-009":"BRACKET, LIFT MOTOR","RP-341-000":"SENSOR BRACKET, 3D LIDAR FRT","RP-341-001":"SENSOR BRACKET, 3D LIDAR FRT(L)","RP-341-002":"SENSOR BRACKET, 3D LIDAR FRT(R)","RP-341-003":"SENSOR BRACKET, CAMERA RR","RP-341-004":"SENSOR BRACKET, 2D LIDAR LH","RP-341-005":"SENSOR BRACKET, 2D LIDAR RH","RP-341-006":"SENSOR BRACKET, 3D LIDAR RR-1","RP-341-007":"SENSOR BRACKET, 3D LIDAR RR(L)","RP-341-008":"SENSOR BRACKET, 3D LIDAR RR(R)","RP-341-009":"SENSOR BRACKET, 3D LIDAR RR-2","RP-341-010":"SENSOR BRACKET, 3D LIDAR RR-3","RP-341-011":"SENSOR BRACKET, CAMERA FRT","RP-341-012":"SENSOR BRACKET, 3D LIDAR-2 FRT-LWR","RP-341-013":"SENSOR BRACKET, 3D LIDAR-2 FRT-L","RP-341-014":"SENSOR BRACKET, 3D LIDAR-2 FRT-R","RP-341-015":"SENSOR BRACKET, 3D LIDAR-2 FRT-RR","RP-341-016":"SENSOR BRACKET, 3D LIDAR-2 RR-LWR","RP-341-017":"SENSOR BRACKET, 3D LIDAR-2 RR-L","RP-341-018":"SENSOR BRACKET, 3D LIDAR-2 RR-R","RP-341-019":"SENSOR BRACKET, 3D LIDAR-2 RR-RR","RP-341-020":"SENSOR BRACKET, 3D LIDAR-2 RR-UPR","RP-341-021":"SENSOR BRACKET, 3D LIDAR-3 RR-LH","RP-341-022":"SENSOR BRACKET, 3D LIDAR-3 RR-RH","RP-341-023":"SENSOR BRACKET, 3D LIDAR-3 RR-LWR","RP-341-024":"SENSOR BRACKET, 3D LIDAR-3 RR-W","RP-341-025":"SENSOR BRACKET, 3D LIDAR-3 RR-UPR","RP-342-000":"FIX BRACKET, Battery connector","RP-342-001":"FIX BRACKET, ANTENNA FRT","RP-342-002":"FIX BRACKET, MANUAL CHARGER","RP-342-003":"FIX BRACKET, MANUAL CHARGER HINGE","RP-342-004":"FIX BRACKET, 3D LIDAR IF","RP-342-005":"FIX BRACKET, CAN IF","RP-342-006":"FIX BRACKET, PC1(NUC)","RP-342-007":"FIX BRACKET, FAN","RP-342-008":"FIX BRACKET, RAIL","RP-342-009":"FIX BRACKET, CISCO","RP-342-010":"FIX BRACKET, IMU","RP-342-011":"FIX BRACKET, E-HUB","RP-342-012":"FIX BRACKET, SPEAKER","RP-342-013":"FIX BRACKET, BATTERY","RP-342-014":"FIX BRACKET, ANTENNA E-RR","RP-342-015":"FIX BRACKET, ANTENNA D-FRT","RP-342-016":"FIX BRACKET, PC(NUVO9531)","RP-350-000":"WING BRACKET, LH","RP-350-001":"WING BRACKET, RH","RP-350-002":"WING BRACKET, DEGREE LH","RP-350-003":"WING BRACKET, DEGREE RH","RP-351-000":"WING BODY, BASE LH","RP-351-001":"WING BODY, BASE RH","RP-351-002":"WING BODY, BASE RH-LIDAR","RP-351-003":"WING BODY, BRACKET LH","RP-351-004":"WING BODY, BRACKET RH","RP-351-005":"WING BODY, RIB","RP-351-008":"WING BODY, RH-LIDAR","RP-351-009":"WING BODY, END LH","RP-351-010":"WING BODY, END RH","RP-351-011":"Wing body, LWR LH","RP-351-012":"Wing body, LWR RH","RP-352-000":"WING COVER, LH","RP-352-001":"WING COVER, RH","RP-406-000":"Bush, Worm wheel_85","RP-406-001":"Bush, Worm wheel_93","RP-410-000":"SHAFT, AOS UPR","RP-410-001":"SHAFT, AOS LWR","RP-410-003":"SHAFT, WORM WHEEL","RP-411-000":"DRIVE SHAFT","RP-416-000":"PI368","RP-420-000":"WHEEL, D90-47.6","RP-420-001":"WHEEL, GSPO 90_20K","RP-423-000":"ROLLER, Lifting","RP-423-001":"Roller, Lifting 25-150.5","RP-423-002":"Roller, Lifting 25-45","RP-430-000":"TIMING PULLEY, 3GT-81T-40","RP-430-002":"TIMING PULLEY, HTD 8M-20T-35","RP-430-003":"TIMING PULLEY, HTD 8M-26T-35","RP-430-004":"TIMING PULLEY, 3GT-22T-63_BRAKE_V2","RP-440-000":"SPUR GEAR, AOS LARGE","RP-440-001":"SPUR GEAR, AOS SMALL","RP-443-000":"Worm Wheel, Boss","RP-443-001":"Worm Wheel, LH","RP-443-002":"Worm Wheel, RH","RP-461-000":"ADAPTER, LIFT MOTOR","RP-490-000":"WORM SHAFT","RP-491-000":"WING SHAFT","RP-862-000":"LIGHT, MARKER RR(R)","RP-862-001":"LIGHT, MARKER RR(L)","RP-863-000":"DIR. FRT","RP-863-001":"DIR. RR","RP-863-010":"BMS, CELL SENSING CABLE","RP-863-011":"BMS, POWER CABLE","RP-863-012":"BMS, BMS SW CABLE","RP-863-013":"BMS, BMS CAN CABLE","RP-863-016":"AOS CABLE FRT, LFT_PPK","RP-863-017":"AOS CABLE RR, LFT_PPK","RP-863-018":"AOS CABLE FRT, DD90_F","RP-863-019":"AOS CABLE RR, DD90_R","RP-863-020":"AOS EX CABLE FRT, LFT_PPK","RP-863-021":"AOS EX CABLE RR, LFT_PPK","RP-863-025":"TFRGV CABLE_FRT_CT","RP-863-026":"TFRGV CABLE_CT_RR","RP-863-027":"TFRGV CABLE_CISCO_FRT","RP-864-016":"5559-10P CONNECTOR","RP-864-017":"5557-10R CONNECTOR","RP-866-016":"5558T TERMINAL","RP-866-017":"5556T TERMINAL","RP-870-000":"MAIN HARNESS ASSY","RP-870-001":"FRONT HARNESS ASSY","RP-870-002":"DOCKING HARNESS","RP-870-003":"MID360, WING LIDAR CABLE","RP-870-004":"MID360, FRONT LIDAR CABLE","RP-922-000":"SPACER, ROLLER BEARING","RP-922-001":"SPACER, WING MODULE","RP-930-000":"Ø8 X 7 X","RP-961-000":"Gasket, Mid","RP-961-001":"GASKET, CAMERA","RP-961-002":"GASKET, AUTO CHARGER","RP-961-003":"GASKET, FRT PANEL","RP-961-004":"GASKET, E-FRT COVER","RP-961-005":"GASKET, E-RR COVER","RP-961-006":"GASKET, MAIN S/W","RP-961-007":"GASKET, ANTENNA","RP-961-008":"GASKET, EMO S/W","RD-040-000":"DD120 V3","RD-040-001":"QD250 V1","RD-040-002":"QD250 CDV1","RD-070-000":"QD/T. V1","RD-070-001":"QD/D. V1","RD-070-002":"DD. V1","RD-120-000":"V1","RD-120-001":"CDV1","RD-121-000":"V1","RD-144-000":"DD120 V3","RD-145-000":"DD120 V3","RD-301-000":"ANGLE SENSOR","RD-301-001":"SPUR GEAR","RD-302-000":"BRAKE","RD-302-001":"BEARING HOLDER","RD-303-000":"UPR","RD-303-001":"BEARING","RD-304-000":"TILTING SUPPORT","RD-304-001":"MOTOR ADAPTOR","RD-304-002":"MOTOR ADAPTOR","RD-306-000":"WIRE","RD-307-000":"SUB KNUCKLE","RD-307-001":"MAIN KNUCKLE","RD-307-002":"MAIN KNUCKLE LWR","RD-307-003":"MAIN KNUCKLE UPR","RD-310-000":"UPR","RD-312-000":"GEAR","RD-312-001":"BEARING","RD-340-000":"MOTOR","RD-410-000":"SHAFT, TILTING SUPPORT","RD-410-001":"SHAFT, TILTING PIN","RD-411-000":"DRIVE SHAFT","RD-430-000":"3GT-90T-39.5","RD-430-001":"3GT-26T-72.5","RD-440-000":"M2.5-Z108-20T","RD-440-001":"M2.5-Z20-22T","RD-440-002":"M2.5-Z108-20T_CDV1","RD-440-003":"M2.5-Z20-22T_CDV1","RD-460-000":"COUPLING, MOTOR SPLINE","RG-010-000":"Robot ASS'Y, GL-N","RG-040-000":"Driving Module ASS'Y F/R","RG-041-000":"SUSPENSION MODULE ASSY, F/L","RG-041-001":"SUSPENSION MODULE ASSY, F/R","RG-041-002":"SUSPENSION MODULE ASSY, R/L","RG-041-003":"SUSPENSION MODULE ASSY, R/R","RG-042-000":"Power Train ASS'Y","RG-050-000":"EHW ASS'Y","RG-081-000":"Powerpack ASS'Y RH","RG-081-001":"Powerpack ASS'Y LH","RG-090-000":"Design Cover ASS'Y","RG-140-000":"Driving PLT Module ASS'Y","RG-141-000":"Mission Module ASS'Y","RG-145-000":"Omni Wheel ASS'Y LH","RG-145-001":"Omni Wheel ASS'Y RH","RG-145-002":"Tire ASSY LH","RG-145-003":"Tire ASSY RH","RG-150-000":"Sensor ASS'Y","RG-150-001":"360° Lidar ASS'Y","RG-150-002":"360° Dome Lidar ASS'Y","RG-150-003":"GNSS Sensor ASS'Y","RG-150-004":"IMU ASS'Y","RG-150-005":"Camera ASS'Y","RG-150-006":"PTZ Camera ASS'Y","RG-150-007":"Pin Camera ASS'Y","RG-151-000":"POE Switch Hub ASS'Y","RG-151-001":"ATO Fuse ASS'Y","RG-151-002":"USB Relay ASS'Y","RG-151-003":"Cooling Fan ASS'Y","RG-151-004":"Speaker ASS'Y","RG-151-005":"LTE Router ASS'Y","RG-300-000":"Driving PLT Frame ASS'Y","RG-300-001":"Mission Module Frame ASS'Y","RG-300-002":"Frame UPR","RG-300-003":"Center Frame LH","RG-300-004":"Center Frame RH","RG-300-005":"Box Frame","RG-300-006":"Master Switch Pannel","RG-300-007":"Master Switch Pannel Plate","RG-302-000":"Block, Omni Wheel Holder OTR","RG-302-001":"Block, Omni Wheel Holder INR","RG-303-000":"Design Cover Skirt","RG-303-001":"Cover FRT","RG-303-002":"E-box Cover RH","RG-303-003":"E-box Cover LH","RG-303-004":"E-box Cover RR","RG-303-005":"Column R/R","RG-303-006":"Column R/L","RG-303-007":"Camera Line Cover","RG-303-008":"Cover UPR","RG-303-009":"Camera Hole Cover","RG-303-010":"Colomn Cover UPR","RG-303-011":"Sensor Cover UPR","RG-303-012":"Wheel Cover FRT","RG-303-013":"Wheel Cover RR","RG-305-000":"GNSS Reciever Case","RG-305-001":"USB Relay Case","RG-310-000":"Suspension Plate F/L","RG-310-001":"Suspension Plate F/R","RG-310-002":"Suspension Plate R/L","RG-310-003":"Suspension Plate R/R","RG-310-004":"E-Box Waterproof Cover Plate LH RH","RG-310-005":"E-Box Waterproof Cover Plate RR","RG-313-000":"Suspension Flange","RG-340-000":"Motor Bracket LH","RG-340-001":"Motor Bracket RH","RG-340-002":"Driving Shaft Bracket FRT","RG-340-003":"Driving Shaft Bracket RR","RG-340-004":"360° Lidar Bracket","RG-340-005":"360° Dome Lidar Bracket","RG-340-006":"PTZ Camera Bracket","RG-340-007":"POE Switch Hub Bracket","RG-340-008":"ATO Fuse Box Bracket","RG-340-009":"Speaker Bracket","RG-340-010":"LTE Router Bracket","RG-340-011":"Cover Connecting Bracket RH LH","RG-340-012":"Cover Connecting Bracket RR","RG-410-000":"OMNI WHEEL SHAFT","RG-411-000":"Driving Shaft FRT","RG-420-000":"VLE 255/20-75K (ID:1016)","RG-420-001":"Wheel, INR Wheel","RG-420-002":"Wheel, OTR Wheel","RG-420-003":"Wheel Adaptor","RG-420-004":"Wheel Cap","RG-424-000":"Omni Wheel LH","RG-424-001":"Omni Wheel RH","RG-430-000":"3GT-90T","RG-430-001":"3GT-26T","RG-450-000":"Timing Belt 3GT-432-28","RG-462-000":"E-MLA20","RG-462-001":"PL024X050AE","RG-475-000":"Length 120, Stroke 29mm","RG-476-000":"TU37X70","RZ-080-000":"POWERPACK ASSY (90), 3GT-22T","RZ-080-001":"POWERPACK ASSY (90), 3GT-22T-63 (B)","RZ-080-002":"POWERPACK ASSY (90), 3GT-22T-? (B/T)","RZ-080-003":"POWERPACK ASSY (90), V2","RZ-081-000":"POWERPACK ASSY (120), REPS 12V (DD120)","RZ-082-000":"POWERPACK ASSY (QD/T), V1","RZ-083-000":"POWERPACK ASSY (QD/D), V1","RZ-180-000":"MOTOR ASSY (90), V1","RZ-180-001":"MOTOR ASSY (90), V2","RZ-180-002":"MOTOR ASSY (90), V1 3GT-22T","RZ-180-003":"MOTOR ASSY (90), V2 3GT-22T","RZ-180-004":"MOTOR ASSY (90), V2 3GT-22T-63 (B)","RZ-180-005":"MOTOR ASSY (90), V2 3GT-21T-?? (B/T)","RZ-182-000":"MOTOR ASSY (QD/T), V1","RZ-190-000":"ECU ASSY (90), CV1","RZ-190-001":"ECU ASSY (90), CV2","RZ-192-000":"ECU ASSY (QD/T), CV1","RZ-192-001":"ECU ASSY (QD/T), CV2","RZ-303-000":"COVER, TOP","RZ-303-001":"COVER, ECU_V1","RZ-303-002":"COVER, ECU_V2","RZ-303-003":"COVER, HEAT SINK COVER_V1","RZ-304-000":"HOUSING, TILTING SUPPORT","RZ-304-001":"HOUSING, HEAT SINK_V1","RZ-310-000":"PLATE, HEAT SINK_V1","RZ-310-001":"PLATE, HEAT SINK_V2","RZ-310-002":"PLATE, PCB BASE","RZ-400-000":"BALL BEARING, 6801ZZ","RZ-400-001":"BALL BEARING, RSJ54DE","RZ-400-002":"BALL BEARING, RSJ54C","RZ-400-003":"BALL BEARING, 6204DD","RZ-400-004":"BALL BEARING, 6828DDU","RZ-400-005":"BALL BEARING, THRUST 51105","RZ-400-006":"BALL BEARING, 6808DD","RZ-400-007":"BALL BEARING, 6926ZZ","RZ-400-008":"BALL BEARING, 6805ZZ","RZ-400-009":"BALL BEARING, 6804ZZ","RZ-401-000":"ROLLER BEARING, 32006","RZ-401-001":"ROLLER BEARING, TAFI405520","RZ-401-002":"ROLLER BEARING, BHK1516","RZ-406-000":"BUSH, 18-15 (FLANGE)","RZ-406-001":"BUSH, 22-15","RZ-406-002":"BUSH, 15-10 (FLANGE)","RZ-406-003":"BUSH, DU2030","RZ-406-004":"BUSH, DUF-20X30 (FLANGE)","RZ-409-000":"BEARING ACCESSORY, BEARING HOLDER BGRC6804ZZ-35","RZ-410-000":"SHAFT, PSFAR20-92","RZ-410-001":"SHAFT, SFUT15-501_M5","RZ-410-002":"SHAFT, PSFJW20-123-M10-N10","RZ-412-000":"ROTARY SHAFT, QD/T MOTOR V1","RZ-413-000":"LINEAR SHAFT, PSFJT15-479-M6","RZ-413-001":"PSSFGR20-57","RZ-413-002":"PSSFGR10-37","RZ-413-003":"SFUT15-560-M5","RZ-413-004":"SFUT15-505-M5","RZ-413-005":"STFUT15-501-M5","RZ-420-000":"WHEEL, D90-W47.6","RZ-420-001":"WHEEL, D120-W47.6","RZ-420-002":"WHEEL, D250-W80","RZ-420-003":"WHEEL, GSPO 80_20K","RZ-420-004":"WHEEL, Tire, C248 3.00-4","RZ-421-000":"Rim, D90-W47.6","RZ-422-000":"Tire, D90-W47.6-TDI","RZ-422-001":"Tire, D90-W47.6-NDI","RZ-450-000":"TIMING BELT, 3GT-348-20","RZ-450-001":"TIMING BELT, HTD 8M-480-35","RZ-450-002":"TIMING BELT, 3GT-432-28","RZ-450-003":"Timing Belt, 3GT-501-28","RZ-471-000":"REDUCER, KSB62A-30_P1","RZ-471-001":"REDUCER, KGV190W-32-22-110-145","RZ-473-000":"BRAKE, BXR-050-10LE-320-C20","RZ-473-001":"BRAKE, IKB-09-08MD 48V","RZ-473-002":"BRAKE, IKB-10-15DC 48V","RZ-800-000":"PC, NUC","RZ-800-001":"PC, ORIN","RZ-800-002":"PC, cover","RZ-800-003":"PC, Nuvo-9531-FT","RZ-801-000":"CPU, I3","RZ-801-001":"CPU, I5","RZ-801-002":"CPU, I7","RZ-802-000":"RAM, 32G","RZ-802-001":"RAM, 64G","RZ-802-002":"RAM, 128G","RZ-803-000":"SSD, 128G","RZ-803-001":"SSD, 256G","RZ-803-002":"SSD, 512G","RZ-803-003":"SSD, 1TB","RZ-803-004":"SSD, 2TB","RZ-805-000":"Controller, CONTROLLER, FADUINO-32TA","RZ-805-001":"Controller, CONTROLLER, BMS","RZ-805-002":"Controller, CONTROLLER, BCU","RZ-805-003":"CONTROLLER, BRAKE_CHOPPER","RZ-805-004":"CONTROLLER, BRAKE_PWM","RZ-805-005":"CONTROLLER, MARKER, COM-13716","RZ-810-000":"3D LiDAR, 3D LIDAR, QT64","RZ-810-001":"3D LiDAR, 3D LIDAR, XT16","RZ-810-002":"3D LiDAR, 3D LIDAR, QT64 IF","RZ-810-003":"3D LiDAR, 3D LIDAR, MID360","RZ-811-000":"2D LiDAR, SLAMTEC RPLIDAR S3","RZ-811-001":"2D LiDAR, 2D LIDAR, CABLE ADAPTOR","RZ-813-000":"Camera, CAMERA, D405","RZ-813-001":"Camera, CAMERA, ZEDxMINI","RZ-813-010":"Camera, DS-2DE4215IW-DE 2MP","RZ-813-011":"Camera, DS-2CD2D25G1","RZ-814-000":"Ultrasonic, ME007YS\n(DFRobot)","RZ-815-000":"GPS Receiver, F9P","RZ-815-001":"GPS Receiver, MRP-2000","RZ-816-000":"IMU, N100","RZ-830-000":"USB HUB, ULI-417H","RZ-830-001":"USB HUB, BB-USH207","RZ-831-000":"Ethernet HUB, ETHERNET HUB, EKI-2725/i-CE","RZ-831-001":"Ethernet HUB, DS-3E0109P-E","RZ-832-000":"CAN Interface, CAN IF, Kvaser PRO 2XHS","RZ-832-001":"CAN Interface, CAN IF, PCAN USB","RZ-833-000":"RECODER, DS-E04NI-Q1_4P_SSD 2T","RZ-833-001":"RECODER, AE-MN5043","RZ-840-000":"BATTERY, 13S15P-48X","RZ-840-001":"BATTERY, 4S52P","RZ-840-002":"BATTERY, 13S21P-35E","RZ-841-000":"DC CONVERTER, SD500L-12","RZ-841-001":"DC CONVERTER, DDR-120A-48","RZ-841-002":"DC CONVERTER, SD-50A-5","RZ-841-003":"DC CONVERTER, SD-100A-12","RZ-841-004":"DC CONVERTER, DDR-15L-5","RZ-841-005":"DC CONVERTER, TEP 150-4812-WI","RZ-841-006":"DC CONVERTER, TEP 200-4815WIRCMF","RZ-842-000":"CHARGING PARTS, AUTO Charger","RZ-842-001":"CHARGING PARTS, DCNHR40PF12-01","RZ-842-002":"CHARGING PARTS, BATTERY CONTACT (48V 탈착식)","RZ-843-000":"SPEAKER, KH-4022D","RZ-843-001":"SPEAKER, BZ-MS200","RZ-844-000":"Serial Convertor, SERIAL CONVERTOR, USBTOUART8CH","RZ-845-000":"Fuse, FUSE, ATOFUSE","RZ-845-001":"Fuse, FUSE, 0498040.M","RZ-845-002":"ATO FUSE, 0287003._","RZ-845-003":"ATO FUSE, 0287005._","RZ-845-005":"ATO FUSE, 028707.5.__","RZ-845-006":"ATO FUSE, 0287015._","RZ-845-007":"ATO FUSE, 0287040._","RZ-846-000":"Fuse Box, FUSE BOX, PDM61001ZXM","RZ-846-001":"Fuse Box, FUSE BOX, 04980921GXM5","RZ-847-000":"BATTERY CHARGER, 0.25C","RZ-850-000":"WAP\n*Wireless Access Point, WAP, CNR-L680","RZ-850-001":"WAP\n*Wireless Access Point, WAP, AWK-1151C","RZ-850-002":"WAP\n*Wireless Access Point, WAP, CISCO(IW9165E-ROW-URWB)","RZ-850-010":"WAP\n*Wireless Access Point, ST-10","RZ-851-000":"Antenna, ANN-MB0\n(GPS Ant)","RZ-851-001":"Antenna, RPSMA Antenna","RZ-851-002":"Antenna, ANTENNA, SMA ADAPTOR RIGHT ANGLE","RZ-851-008":"Antenna, COVER","RZ-860-000":"SWITCH, 880062\n(Littlefuse)","RZ-860-001":"SWITCH, 200A","RZ-860-002":"SWITCH, 100A","RZ-860-003":"SWITCH, HX19-A5\n(Metal)","RZ-860-010":"SWITCH, LB22M5.4","RZ-860-011":"SWITCH, EMO","RZ-861-000":"RELAY, JK-UR-8","RZ-861-001":"RELAY, JK-UR-4","RZ-861-002":"RELAY, WYR1C0310D4","RZ-861-003":"RELAY, AK-C21008","RZ-862-000":"LIGHT, LED Light ASSY, WS2811","RZ-862-001":"LIGHT, WS2812","RZ-862-003":"LIGHT, LED Light FRT, WS2811","RZ-862-004":"LIGHT, LED Light MID, WS2811","RZ-862-005":"LIGHT, LED Light RH, WS2811","RZ-862-006":"LIGHT, LED Light LH, WS2811","RZ-862-007":"LIGHT, LED Light RR, WS2811","RZ-862-008":"LIGHT, LED Light LWR, WS2811","RZ-863-000":"CABLE, SMA_F TO SMA_M 1M","RZ-863-001":"CABLE, SMA_F TO SMA_M 2M","RZ-863-002":"AOS CABLE ASSY","RZ-863-010":"CABLE, USB C to A 30cm","RZ-863-011":"CABLE, USB Micro B to USB A 3.2 1.5M","RZ-863-012":"CABLE, USB Micro B to USB A 3.2 2M","RZ-863-013":"USB Micro B to USB A 3.2 1300mm","RZ-863-014":"USB Micro B to USB A 3.2 950mm","RZ-863-020":"CABLE, CAT6 15cm","RZ-863-021":"CABLE, CAT6 30cm","RZ-863-022":"CABLE, CAT6 1M","RZ-863-023":"CABLE, CAT6 1.5M","RZ-863-024":"CABLE, CAT6 2M","RZ-863-025":"CAT5.E_100mm_PC_EHUB","RZ-863-026":"CAT5.E_920mm_PC_CISCO","RZ-864-000":"CONNECTOR, ANDERSON 120A","RZ-864-001":"CONNECTOR, ANDERSON 50A","RZ-864-002":"CONNECTOR, MG645785-5\n(QD, Conn, Male)","RZ-864-003":"CONNECTOR, MG656968-4\n(QD/D, Sensor Conn)","RZ-864-004":"CONNECTOR, MG656968-4\n(QD/D, PP Conn)","RZ-864-005":"CONNECTOR, DD120 ECU Conn","RZ-865-000":"CABLE ACCESARY, CABLE VEYOR","RZ-866-000":"TERMINAL, 927835-1\n(ATO Fuse terminal, TE)","RZ-866-001":"TERMINAL, ST30722-3\n(QD, Power)","RZ-866-002":"TERMINAL, ST731368-3\n(QD, Signal)","RZ-866-003":"TERMINAL, SPS35-M8/6xM5","RZ-866-004":"TERMINAL, Terminal Block XTB-COM18T","RZ-867-000":"TERMINAL BLOCK, SPS35-M8_6XM5\n(삼원액트)","RZ-867-001":"TERMINAL BLOCK, ACS-20L\n(Autonics)","RZ-868-000":"PORT, LP-24-J\n(HDMI)","RZ-868-001":"PORT, LP-24-J       \n(USB3)","RZ-868-002":"PORT, LP-16-J\n(RJ45)","RZ-868-003":"PORT, DSUB9","RZ-869-000":"SEAL, 963244-1\n(ATO Fuse Seal, TE)","RZ-869-001":"SEAL, MG685469\n(QD/T, Power)","RZ-869-002":"SEAL, MG685391\n(QD/T, Signal)","RZ-869-003":"SEAL, O-RING S115-NBR-70","RZ-890-000":"ETC, JS-C35\n(Battery meter)","RZ-890-001":"ETC, EARTH-BAR(MTS6-M4-3P)","RZ-890-002":"ETC, 22SQ 1M\n(편조 어스 케이블)","RZ-890-003":"ETC, JOTN 60A\n(조립식 단자대)","RZ-890-004":"ETC, JTAN 60\n(세퍼레이터)","RZ-890-005":"ETC, JTSN-2\n(단자대 스토퍼)","RZ-890-006":"ETC, MGA6012YR-O10\n(FAN)","RZ-890-007":"ETC, JTRN4\n(DIN Rail)","RZ-890-008":"ETC, FAN, 1608VL","RZ-890-009":"ETC, CABLE HOLDER-M3","RZ-890-010":"ETC, CABLE HOLDER-M4","RZ-890-011":"CABLE TIE MOUNT, JOLM-3","RZ-890-012":"CABLE TIE MOUNT, JOLM-4","RZ-900-000":"FLANGE BOLT, TILTING","RZ-900-001":"FLANGE BOLT, M12-20","RZ-900-002":"FLANGE BOLT, M6-50","RZ-901-000":"HEX BOLT, M6-22","RZ-901-001":"M5-25","RZ-902-000":"SOCKET HEAD BOLT, M4-12","RZ-902-001":"SOCKET HEAD BOLT, M5-12","RZ-902-002":"SOCKET HEAD BOLT, M3-10","RZ-902-003":"SOCKET HEAD BOLT, M4-8","RZ-902-004":"SOCKET HEAD BOLT, M3-15","RZ-902-005":"SOCKET HEAD BOLT, M4-10","RZ-902-006":"SOCKET HEAD BOLT, M8-30","RZ-902-007":"SOCKET HEAD BOLT, M6-40","RZ-902-008":"SOCKET HEAD BOLT, M8-20","RZ-902-009":"SOCKET HEAD BOLT, M4-15","RZ-902-010":"SOCKET HEAD BOLT, M4-55","RZ-902-011":"SOCKET HEAD BOLT, M5-15","RZ-902-012":"SOCKET HEAD BOLT, M4-55","RZ-902-013":"SOCKET HEAD BOLT, M8-25","RZ-902-014":"SOCKET HEAD BOLT, M4-6","RZ-902-015":"SOCKET HEAD BOLT, M3-8","RZ-902-016":"SOCKET HEAD BOLT, M8-45","RZ-902-017":"SOCKET HEAD BOLT, M8-60","RZ-902-018":"SOCKET HEAD BOLT, M5-20","RZ-902-019":"SOCKET HEAD BOLT, M10-12","RZ-902-020":"SOCKET HEAD BOLT, M4-20","RZ-902-021":"SOCKET HEAD BOLT, M5-40","RZ-902-022":"SOCKET HEAD BOLT, M4-30","RZ-902-023":"SOCKET HEAD BOLT, M3-28","RZ-902-024":"SOCKET HEAD BOLT, M3-5","RZ-902-025":"SOCKET HEAD BOLT, M6-20","RZ-902-026":"SOCKET HEAD BOLT, M4-35","RZ-902-027":"SOCKET HEAD BOLT, M5-35","RZ-902-028":"SOCKET HEAD BOLT, M6-25","RZ-902-029":"SOCKET HEAD BOLT, M6-15","RZ-902-030":"SOCKET HEAD BOLT, M6-18","RZ-902-031":"SOCKET HEAD BOLT, M6-30","RZ-902-032":"SOCKET HEAD BOLT, M6-35","RZ-902-033":"SOCKET HEAD BOLT, M8-40","RZ-902-034":"SOCKET HEAD BOLT, M5-30","RZ-902-035":"SOCKET HEAD BOLT, M5-70","RZ-902-036":"SOCKET HEAD BOLT, M3-6","RZ-902-037":"SOCKET HEAD BOLT, M5-25","RZ-902-038":"SOCKET HEAD BOLT, M8-10","RZ-902-039":"SOCKET HEAD BOLT, M5-45","RZ-902-040":"SOCKET HEAD BOLT, M8-16","RZ-902-041":"SOCKET HEAD BOLT, M5 - 10","RZ-902-042":"SOCKET HEAD BOLT, FLAT M8 - 15","RZ-902-043":"SOCKET HEAD BOLT, M4-14","RZ-902-044":"SOCKET HEAD BOLT, FLAT M10-20","RZ-902-045":"M5-8","RZ-902-046":"M3-22","RZ-902-047":"SOCKET HEAD BOLT(FLAT), M2.5-8","RZ-903-000":"BUTTON HEAD BOLT, M5-6 (+)","RZ-904-000":"FLAT HEAD BOLT, M4-6","RZ-904-001":"FLAT HEAD BOLT, M5-20","RZ-904-002":"FLAT HEAD BOLT, M3-10","RZ-904-003":"FLAT HEAD BOLT, M3-8","RZ-904-004":"FLAT HEAD BOLT, M4-8","RZ-904-005":"FLAT HEAD BOLT, M5-15","RZ-904-006":"FLAT HEAD BOLT, M8-50","RZ-904-007":"FLAT HEAD BOLT, M5-10","RZ-904-008":"FLAT HEAD BOLT, M5 - 20","RZ-904-009":"FLAT HEAD BOLT, FLAT HAED BOLT, M3-6","RZ-904-010":"FLAT HEAD BOLT, FLAT HAED BOLT, M4-10","RZ-904-011":"FLAT HEAD BOLT,  M6-20","RZ-904-012":"FLAT HEAD BOLT, M8-30","RZ-904-013":"FLAT HEAD BOLT, M3-4","RZ-906-000":"SET SCREW (무두볼트), Socket Set Bolt M4-4","RZ-906-001":"SET SCREW (무두볼트), SET SCREW, M4-8","RZ-906-002":"SET SCREW (무두볼트), SET SCREW, M8-30","RZ-907-000":"SEMS BOLT (스프링,와셔삽입볼트), SEMS BOLT, M4-8","RZ-907-001":"SEMS BOLT (스프링,와셔삽입볼트), SEMS BOLT, M3-8","RZ-907-002":"SEMS BOLT, M5-12","RZ-907-003":"SEMS BOLT, M3-6","RZ-907-004":"SEMS BOLT, M3-6 (BK)","RZ-907-005":"SEMS BOLT, M3-5","RZ-907-006":"SEMS BOLT, M3-15","RZ-907-007":"SEMS BOLT, M3-10","RZ-907-008":"SEMS BOLT, M4-10(BK)","RZ-907-009":"SEMS BOLT, M3-25","RZ-907-010":"SEMS BOLT, M3-12","RZ-909-000":"ETC. BOLT/SCREW, M4-8 (NARROW)","RZ-909-001":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM4-8","RZ-909-002":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM4-10","RZ-909-003":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM4-15","RZ-909-004":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM5-10","RZ-909-005":"ETC. BOLT/SCREW, Cross Hole Round Head Screw\nM5-10","RZ-909-006":"ETC. BOLT/SCREW, Cross Hole Countersink Head Bolt\nM6-20","RZ-909-007":"ETC. BOLT/SCREW, Stud Bolt, M8-24.8","RZ-909-008":"INCH BOLT, 6-32_1/4\"","RZ-911-000":"HEX NUT, M6","RZ-911-001":"HEX NUT, M4","RZ-911-002":"HEX NUT, M24","RZ-911-003":"HEX NUT, M12","RZ-912-000":"LOCK NUT, M16","RZ-912-001":"M3","RZ-916-000":"SQURE NUT, NSQA-SUS-M6","RZ-920-000":"WASHER, M12","RZ-920-001":"WASHER, M4 WASHER","RZ-920-002":"WASHER, M5 WASHER","RZ-920-003":"WASHER, M10, T1.2","RZ-920-004":"WASHER, GSPWF10","RZ-921-000":"SPRING WASHER, SSLW12","RZ-921-001":"SPRING WASHER, M5 SPRING WASHER","RZ-921-002":"SPRING WASHER, GSSLW10","RZ-922-000":"SPACER, DWSSM-D25-V20.5-T7 \n(S45C)","RZ-922-001":"SPACER, FWSSB-D25-V20.5-T7\n(황동)","RZ-922-002":"SPACER, FWSBB-D25-V20.5-T7","RZ-923-000":"SUPPORT, E-PETG10-20-M3-N3","RZ-923-001":"SUPPORT, C-PETGR8-20","RZ-923-002":"SUPPORT, C-PLSBWRK6-30","RZ-930-000":"MACHINE KEY, 8X7X45","RZ-930-001":"MACHINE KEY, 6X6X15","RZ-930-002":"MACHINE KEY, 5X5X15","RZ-930-003":"MACHINE KEY, 5X5X12","RZ-930-004":"MACHINE KEY, 6X6X45","RZ-930-005":"MACHINE KEY, 5X5X35","RZ-931-000":"SNAP RING (H), HHK-HCRFZ52","RZ-932-000":"SNAP RING (S), SNAP RING(S), STWN20","RZ-932-001":"SNAP RING (S), S-15","RZ-932-002":"SNAP RING (S), RTWS32","RZ-932-003":"SNAP RING (S), SNAP RING(S), STWS20","RZ-932-004":"SNAP RING (S), STWS10","RZ-932-005":"SNAP RING (S), S40","RZ-932-006":"SNAP RING (S), E-GSLPFG-D3-L5","RZ-933-000":"PIN, POSITION 6-10","RZ-933-001":"PIN, 8-50","RZ-933-002":"PIN, POSITION 3-10","RZ-933-003":"PIN, POSITION PIN, WORM WHEEL(Ø6-20)","RZ-933-004":"PIN, 8-25","RZ-933-005":"PIN, E-GSLPFP-D6-L10","RZ-933-006":"PIN, POSITION PIN, (Ø8-25, DOWEL PIN)","RZ-933-007":"POSITION PIN, 6mm-13","RZ-933-008":"POSITION PIN, 5mm-10","RZ-960-000":"SEAL, AN037","RZ-960-001":"SEAL, TC30X45X8","RZ-960-002":"SEAL, COMPOUND","RZ-961-000":"GASKET, RBFMA3-5","RZ-965-000":"LUBRICATOR, RING GUIDE","RZ-971-000":"RAIL, DIN JTRN4","RZ-980-000":"MAGNET, D15x3T (Hmagnet)"};
+const LOOKUP = {"RP":{"10":{"0":"ROBOT ASSY, PARKIE 90MM","1":"ROBOT ASSY, PARKIE MVP2"},"20":{"0":"BODY ASSEMBLY"},"30":{"0":"WING MODULE, LH","1":"WING MODULE, RH","2":"LIFT LH","3":"LIFT RH"},"50":{"0":"E-BOX ASSEMBLY, FRT","1":"E-BOX ASSEMBLY RR","2":"E-BOX ASSEMBLY, MID"},"70":{"0":"FRT","1":"RR"},"130":{"0":"WORM REDUCER, LH","1":"WORM REDUCER, RH"},"131":{"0":"WORM WHEEL ASSEMBLY, LH","1":"WORM WHEEL ASSEMBLY, RH"},"132":{"0":"WING ASSEMBLY, LH","1":"WING ASSEMBLY, RH","2":"WING ASSEMBLY, RH-LIDAR"},"133":{"0":"ROLLER ASSEMBLY, 25-144","1":"ROLLER ASSEMBLY, 25-150.5","2":"ROLLER ASSEMBLY, 25-45"},"134":{"0":"CASTER ASSY, D80 H95"},"135":{"0":"WING BODY ASSY, LH","1":"WING BODY ASSY, RH"},"140":{"0":"FRT V1","1":"RR V1"},"141":{"0":"FRT V1","1":"RR V1"},"142":{"0":"FRT V1","1":"RR V1"},"143":{"0":"V1"},"144":{"0":"V1"},"145":{"0":"V1"},"146":{"0":"V1"},"150":{"0":"SENSOR ASSEMBLY, 3D LIDAR FRT","1":"SENSOR ASSEMBLY, CAMERA RR","2":"SENSOR ASSEMBLY, 2D LIDAR LH","3":"SENSOR ASSEMBLY, 2D LIDAR RH","4":"SENSOR ASSEMBLY, 3D LIDAR RR(R)","5":"SENSOR ASSEMBLY, CAMERA FRT","6":"SENSOR ASSEMBLY, 3D LIDAR-2 FRT","7":"SENSOR ASSEMBLY, 3D LIDAR-2 RR","8":"SENSOR ASSEMBLY, 3D LIDAR-3 RR"},"151":{"0":"ASSEMBLY, BATTERY CONNECTOR","1":"ASSEMBLY, MANUAL CHARGER","2":"ASSEMBLY, MARKER RH","3":"ASSEMBLY, USB RELAY","4":"ASSEMBLY, FAN"},"152":{"0":"PANEL ASSEMBLY, D-FRT","1":"PANEL ASSEMBLY, D-RR","2":"PANEL ASSEMBLY, E-FRT","3":"PANEL ASSEMBLY, RR(R)"},"300":{"0":"Frame, FRT(L)","1":"Frame, FRT(R)","2":"Frame, RR(L)","3":"Frame, RR(R)","4":"Frame, FRT","5":"Frame, RR","6":"Frame, LH","7":"Frame, RH","8":"Frame, MID","9":"FRAME, RIB FRT(L)","10":"FRAME, RIB FRT(R)","11":"FRAME, RIB RR(L)","12":"FRAME, RIB RR(R)1","13":"FRAME, RIB MID1","14":"FRAME, RIB MID2","15":"FRAME, RIB MID3","16":"FRAME, RIB RR(R)2","17":"FRAME","19":"FRAME, RIB MID4"},"301":{"0":"STOPPER, MID","1":"STOPPER, CASTER_LH","2":"STOPPER, CASTER_RH","3":"STOPPER, CHARGE"},"302":{"0":"Block, Tensioner","1":"BLOCK, TILTING BASE","2":"BLOCK, TILTING BODY","3":"BLOCK, BRAKE","4":"BLOCK, CASTER LWR"},"303":{"0":"Cover, Marker","1":"Cover, FRT","2":"Cover, LWR","3":"Cover, MID","4":"Cover, Worm Input","5":"Cover, Worm End","7":"COVER, AOS","8":"COVER, LED 01","9":"COVER, Lift Pulley","10":"COVER, Worm Pulley","11":"COVER, E-FRT","12":"COVER, MARKER RH","13":"COVER, E-RR","14":"COVER, USB RELAY","15":"COVER, DESIGN COVER","16":"COVER, BCU","17":"COVER, BMS"},"304":{"0":"HOUSING, AOS","1":"HOUSING, WORM WHEEL","3":"Housing, RR(L) marker","6":"HOUSING, CASTER LWR","7":"HOUSING, CASTER UPR","8":"HOUSING, CASTER FLANGE","9":"HOUSING, WORM(LH) LWR L","10":"HOUSING, WORM(LH) LWR R","11":"HOUSING, WORM(LH) UPR L","12":"HOUSING, WORM(LH) UPR R","13":"HOUSING, WORM(RH) LWR L","14":"HOUSING, WORM(RH) LWR R","15":"HOUSING, WORM(RH) UPR L","16":"HOUSING, WORM(RH) UPR R"},"305":{"0":"CASE, E-FRT","1":"CASE, E-RR","2":"CASE, E-MID","3":"CASE, USB RELAY","4":"CASE, MARKER RH","5":"CASE, BCU","6":"CASE, BMS","10":"CASE, E-REAR LWR","11":"CASE, E-REAR FRT","12":"CASE, E-REAR RR(R)"},"306":{"0":"GUIDE, CABLE INR 01","1":"GUIDE, CABLE INR 02","2":"GUIDE, CABLE INR 03","3":"GUIDE, CABLE OTR 01","4":"GUIDE, CABLE OTR 02"},"310":{"0":"PLATE, DD BASE FRT","1":"PLATE, DD BASE RR","2":"Plate, Worm LH","3":"Plate, Worm RH","4":"PLATE, CASTER LWR"},"311":{"0":"Panel, RR1","1":"Panel, RR2","2":"PANEL, E-FRT","3":"PANEL, E-RR","4":"PANEL, FRT"},"314":{"0":"MARKER"},"340":{"0":"BRACKET, FRAME","1":"BRACKET, LIFT MOTOR LH","2":"BRACKET, LIFT MOTOR RH","3":"BRACKET, LIFT REDUCER","4":"BRACKET, AOS HOUSING","5":"BRACKET, AOS CABLE","6":"BRACKET, MOTOR","7":"BRAKCET, E-CASE","8":"BRAKCET, BATTERY FRAME","9":"BRACKET, LIFT MOTOR"},"341":{"0":"SENSOR BRACKET, 3D LIDAR FRT","1":"SENSOR BRACKET, 3D LIDAR FRT(L)","2":"SENSOR BRACKET, 3D LIDAR FRT(R)","3":"SENSOR BRACKET, CAMERA RR","4":"SENSOR BRACKET, 2D LIDAR LH","5":"SENSOR BRACKET, 2D LIDAR RH","6":"SENSOR BRACKET, 3D LIDAR RR-1","7":"SENSOR BRACKET, 3D LIDAR RR(L)","8":"SENSOR BRACKET, 3D LIDAR RR(R)","9":"SENSOR BRACKET, 3D LIDAR RR-2","10":"SENSOR BRACKET, 3D LIDAR RR-3","11":"SENSOR BRACKET, CAMERA FRT","12":"SENSOR BRACKET, 3D LIDAR-2 FRT-LWR","13":"SENSOR BRACKET, 3D LIDAR-2 FRT-L","14":"SENSOR BRACKET, 3D LIDAR-2 FRT-R","15":"SENSOR BRACKET, 3D LIDAR-2 FRT-RR","16":"SENSOR BRACKET, 3D LIDAR-2 RR-LWR","17":"SENSOR BRACKET, 3D LIDAR-2 RR-L","18":"SENSOR BRACKET, 3D LIDAR-2 RR-R","19":"SENSOR BRACKET, 3D LIDAR-2 RR-RR","20":"SENSOR BRACKET, 3D LIDAR-2 RR-UPR","21":"SENSOR BRACKET, 3D LIDAR-3 RR-LH","22":"SENSOR BRACKET, 3D LIDAR-3 RR-RH","23":"SENSOR BRACKET, 3D LIDAR-3 RR-LWR","24":"SENSOR BRACKET, 3D LIDAR-3 RR-W","25":"SENSOR BRACKET, 3D LIDAR-3 RR-UPR"},"342":{"0":"FIX BRACKET, Battery connector","1":"FIX BRACKET, ANTENNA FRT","2":"FIX BRACKET, MANUAL CHARGER","3":"FIX BRACKET, MANUAL CHARGER HINGE","4":"FIX BRACKET, 3D LIDAR IF","5":"FIX BRACKET, CAN IF","6":"FIX BRACKET, PC1(NUC)","7":"FIX BRACKET, FAN","8":"FIX BRACKET, RAIL","9":"FIX BRACKET, CISCO","10":"FIX BRACKET, IMU","11":"FIX BRACKET, E-HUB","12":"FIX BRACKET, SPEAKER","13":"FIX BRACKET, BATTERY","14":"FIX BRACKET, ANTENNA E-RR","15":"FIX BRACKET, ANTENNA D-FRT","16":"FIX BRACKET, PC(NUVO9531)"},"350":{"0":"WING BRACKET, LH","1":"WING BRACKET, RH","2":"WING BRACKET, DEGREE LH","3":"WING BRACKET, DEGREE RH"},"351":{"0":"WING BODY, BASE LH","1":"WING BODY, BASE RH","2":"WING BODY, BASE RH-LIDAR","3":"WING BODY, BRACKET LH","4":"WING BODY, BRACKET RH","5":"WING BODY, RIB","8":"WING BODY, RH-LIDAR","9":"WING BODY, END LH","10":"WING BODY, END RH","11":"Wing body, LWR LH","12":"Wing body, LWR RH"},"352":{"0":"WING COVER, LH","1":"WING COVER, RH"},"406":{"0":"Bush, Worm wheel_85","1":"Bush, Worm wheel_93"},"410":{"0":"SHAFT, AOS UPR","1":"SHAFT, AOS LWR","3":"SHAFT, WORM WHEEL"},"411":{"0":"DRIVE SHAFT"},"416":{"0":"PI368"},"420":{"0":"WHEEL, D90-47.6","1":"WHEEL, GSPO 90_20K"},"423":{"0":"ROLLER, Lifting","1":"Roller, Lifting 25-150.5","2":"Roller, Lifting 25-45"},"430":{"0":"TIMING PULLEY, 3GT-81T-40","2":"TIMING PULLEY, HTD 8M-20T-35","3":"TIMING PULLEY, HTD 8M-26T-35","4":"TIMING PULLEY, 3GT-22T-63_BRAKE_V2"},"440":{"0":"SPUR GEAR, AOS LARGE","1":"SPUR GEAR, AOS SMALL"},"443":{"0":"Worm Wheel, Boss","1":"Worm Wheel, LH","2":"Worm Wheel, RH"},"461":{"0":"ADAPTER, LIFT MOTOR"},"490":{"0":"WORM SHAFT"},"491":{"0":"WING SHAFT"},"862":{"0":"LIGHT, MARKER RR(R)","1":"LIGHT, MARKER RR(L)"},"863":{"0":"DIR. FRT","1":"DIR. RR","10":"BMS, CELL SENSING CABLE","11":"BMS, POWER CABLE","12":"BMS, BMS SW CABLE","13":"BMS, BMS CAN CABLE","16":"AOS CABLE FRT, LFT_PPK","17":"AOS CABLE RR, LFT_PPK","18":"AOS CABLE FRT, DD90_F","19":"AOS CABLE RR, DD90_R","20":"AOS EX CABLE FRT, LFT_PPK","21":"AOS EX CABLE RR, LFT_PPK","25":"TFRGV CABLE_FRT_CT","26":"TFRGV CABLE_CT_RR","27":"TFRGV CABLE_CISCO_FRT"},"864":{"16":"5559-10P CONNECTOR","17":"5557-10R CONNECTOR"},"866":{"16":"5558T TERMINAL","17":"5556T TERMINAL"},"870":{"0":"MAIN HARNESS ASSY","1":"FRONT HARNESS ASSY","2":"DOCKING HARNESS","3":"MID360, WING LIDAR CABLE","4":"MID360, FRONT LIDAR CABLE"},"922":{"0":"SPACER, ROLLER BEARING","1":"SPACER, WING MODULE"},"930":{"0":"Ø8 X 7 X"},"961":{"0":"Gasket, Mid","1":"GASKET, CAMERA","2":"GASKET, AUTO CHARGER","3":"GASKET, FRT PANEL","4":"GASKET, E-FRT COVER","5":"GASKET, E-RR COVER","6":"GASKET, MAIN S/W","7":"GASKET, ANTENNA","8":"GASKET, EMO S/W"}},"RD":{"40":{"0":"DD120 V3","1":"QD250 V1","2":"QD250 CDV1"},"70":{"0":"QD/T. V1","1":"QD/D. V1","2":"DD. V1"},"120":{"0":"V1","1":"CDV1"},"121":{"0":"V1"},"144":{"0":"DD120 V3"},"145":{"0":"DD120 V3"},"301":{"0":"ANGLE SENSOR","1":"SPUR GEAR"},"302":{"0":"BRAKE","1":"BEARING HOLDER"},"303":{"0":"UPR","1":"BEARING"},"304":{"0":"TILTING SUPPORT","1":"MOTOR ADAPTOR","2":"MOTOR ADAPTOR"},"306":{"0":"WIRE"},"307":{"0":"SUB KNUCKLE","1":"MAIN KNUCKLE","2":"MAIN KNUCKLE LWR","3":"MAIN KNUCKLE UPR"},"310":{"0":"UPR"},"312":{"0":"GEAR","1":"BEARING"},"340":{"0":"MOTOR"},"410":{"0":"SHAFT, TILTING SUPPORT","1":"SHAFT, TILTING PIN"},"411":{"0":"DRIVE SHAFT"},"430":{"0":"3GT-90T-39.5","1":"3GT-26T-72.5"},"440":{"0":"M2.5-Z108-20T","1":"M2.5-Z20-22T","2":"M2.5-Z108-20T_CDV1","3":"M2.5-Z20-22T_CDV1"},"460":{"0":"COUPLING, MOTOR SPLINE"}},"RG":{"10":{"0":"Robot ASS'Y, GL-N"},"40":{"0":"Driving Module ASS'Y F/R"},"41":{"0":"SUSPENSION MODULE ASSY, F/L","1":"SUSPENSION MODULE ASSY, F/R","2":"SUSPENSION MODULE ASSY, R/L","3":"SUSPENSION MODULE ASSY, R/R"},"42":{"0":"Power Train ASS'Y"},"50":{"0":"EHW ASS'Y"},"81":{"0":"Powerpack ASS'Y RH","1":"Powerpack ASS'Y LH"},"90":{"0":"Design Cover ASS'Y"},"140":{"0":"Driving PLT Module ASS'Y"},"141":{"0":"Mission Module ASS'Y"},"145":{"0":"Omni Wheel ASS'Y LH","1":"Omni Wheel ASS'Y RH","2":"Tire ASSY LH","3":"Tire ASSY RH"},"150":{"0":"Sensor ASS'Y","1":"360° Lidar ASS'Y","2":"360° Dome Lidar ASS'Y","3":"GNSS Sensor ASS'Y","4":"IMU ASS'Y","5":"Camera ASS'Y","6":"PTZ Camera ASS'Y","7":"Pin Camera ASS'Y"},"151":{"0":"POE Switch Hub ASS'Y","1":"ATO Fuse ASS'Y","2":"USB Relay ASS'Y","3":"Cooling Fan ASS'Y","4":"Speaker ASS'Y","5":"LTE Router ASS'Y"},"300":{"0":"Driving PLT Frame ASS'Y","1":"Mission Module Frame ASS'Y","2":"Frame UPR","3":"Center Frame LH","4":"Center Frame RH","5":"Box Frame","6":"Master Switch Pannel","7":"Master Switch Pannel Plate"},"302":{"0":"Block, Omni Wheel Holder OTR","1":"Block, Omni Wheel Holder INR"},"303":{"0":"Design Cover Skirt","1":"Cover FRT","2":"E-box Cover RH","3":"E-box Cover LH","4":"E-box Cover RR","5":"Column R/R","6":"Column R/L","7":"Camera Line Cover","8":"Cover UPR","9":"Camera Hole Cover","10":"Colomn Cover UPR","11":"Sensor Cover UPR","12":"Wheel Cover FRT","13":"Wheel Cover RR"},"305":{"0":"GNSS Reciever Case","1":"USB Relay Case"},"310":{"0":"Suspension Plate F/L","1":"Suspension Plate F/R","2":"Suspension Plate R/L","3":"Suspension Plate R/R","4":"E-Box Waterproof Cover Plate LH RH","5":"E-Box Waterproof Cover Plate RR"},"313":{"0":"Suspension Flange"},"340":{"0":"Motor Bracket LH","1":"Motor Bracket RH","2":"Driving Shaft Bracket FRT","3":"Driving Shaft Bracket RR","4":"360° Lidar Bracket","5":"360° Dome Lidar Bracket","6":"PTZ Camera Bracket","7":"POE Switch Hub Bracket","8":"ATO Fuse Box Bracket","9":"Speaker Bracket","10":"LTE Router Bracket","11":"Cover Connecting Bracket RH LH","12":"Cover Connecting Bracket RR"},"410":{"0":"OMNI WHEEL SHAFT"},"411":{"0":"Driving Shaft FRT"},"420":{"0":"VLE 255/20-75K (ID:1016)","1":"Wheel, INR Wheel","2":"Wheel, OTR Wheel","3":"Wheel Adaptor","4":"Wheel Cap"},"424":{"0":"Omni Wheel LH","1":"Omni Wheel RH"},"430":{"0":"3GT-90T","1":"3GT-26T"},"450":{"0":"Timing Belt 3GT-432-28"},"462":{"0":"E-MLA20","1":"PL024X050AE"},"475":{"0":"Length 120, Stroke 29mm"},"476":{"0":"TU37X70"}},"RZ":{"80":{"0":"POWERPACK ASSY (90), 3GT-22T","1":"POWERPACK ASSY (90), 3GT-22T-63 (B)","2":"POWERPACK ASSY (90), 3GT-22T-? (B/T)","3":"POWERPACK ASSY (90), V2"},"81":{"0":"POWERPACK ASSY (120), REPS 12V (DD120)"},"82":{"0":"POWERPACK ASSY (QD/T), V1"},"83":{"0":"POWERPACK ASSY (QD/D), V1"},"180":{"0":"MOTOR ASSY (90), V1","1":"MOTOR ASSY (90), V2","2":"MOTOR ASSY (90), V1 3GT-22T","3":"MOTOR ASSY (90), V2 3GT-22T","4":"MOTOR ASSY (90), V2 3GT-22T-63 (B)","5":"MOTOR ASSY (90), V2 3GT-21T-?? (B/T)"},"182":{"0":"MOTOR ASSY (QD/T), V1"},"190":{"0":"ECU ASSY (90), CV1","1":"ECU ASSY (90), CV2"},"192":{"0":"ECU ASSY (QD/T), CV1","1":"ECU ASSY (QD/T), CV2"},"303":{"0":"COVER, TOP","1":"COVER, ECU_V1","2":"COVER, ECU_V2","3":"COVER, HEAT SINK COVER_V1"},"304":{"0":"HOUSING, TILTING SUPPORT","1":"HOUSING, HEAT SINK_V1"},"310":{"0":"PLATE, HEAT SINK_V1","1":"PLATE, HEAT SINK_V2","2":"PLATE, PCB BASE"},"400":{"0":"BALL BEARING, 6801ZZ","1":"BALL BEARING, RSJ54DE","2":"BALL BEARING, RSJ54C","3":"BALL BEARING, 6204DD","4":"BALL BEARING, 6828DDU","5":"BALL BEARING, THRUST 51105","6":"BALL BEARING, 6808DD","7":"BALL BEARING, 6926ZZ","8":"BALL BEARING, 6805ZZ","9":"BALL BEARING, 6804ZZ"},"401":{"0":"ROLLER BEARING, 32006","1":"ROLLER BEARING, TAFI405520","2":"ROLLER BEARING, BHK1516"},"406":{"0":"BUSH, 18-15 (FLANGE)","1":"BUSH, 22-15","2":"BUSH, 15-10 (FLANGE)","3":"BUSH, DU2030","4":"BUSH, DUF-20X30 (FLANGE)"},"409":{"0":"BEARING ACCESSORY, BEARING HOLDER BGRC6804ZZ-35"},"410":{"0":"SHAFT, PSFAR20-92","1":"SHAFT, SFUT15-501_M5","2":"SHAFT, PSFJW20-123-M10-N10"},"412":{"0":"ROTARY SHAFT, QD/T MOTOR V1"},"413":{"0":"LINEAR SHAFT, PSFJT15-479-M6","1":"PSSFGR20-57","2":"PSSFGR10-37","3":"SFUT15-560-M5","4":"SFUT15-505-M5","5":"STFUT15-501-M5"},"420":{"0":"WHEEL, D90-W47.6","1":"WHEEL, D120-W47.6","2":"WHEEL, D250-W80","3":"WHEEL, GSPO 80_20K","4":"WHEEL, Tire, C248 3.00-4"},"421":{"0":"Rim, D90-W47.6"},"422":{"0":"Tire, D90-W47.6-TDI","1":"Tire, D90-W47.6-NDI"},"450":{"0":"TIMING BELT, 3GT-348-20","1":"TIMING BELT, HTD 8M-480-35","2":"TIMING BELT, 3GT-432-28","3":"Timing Belt, 3GT-501-28"},"471":{"0":"REDUCER, KSB62A-30_P1","1":"REDUCER, KGV190W-32-22-110-145"},"473":{"0":"BRAKE, BXR-050-10LE-320-C20","1":"BRAKE, IKB-09-08MD 48V","2":"BRAKE, IKB-10-15DC 48V"},"800":{"0":"PC, NUC","1":"PC, ORIN","2":"PC, cover","3":"PC, Nuvo-9531-FT"},"801":{"0":"CPU, I3","1":"CPU, I5","2":"CPU, I7"},"802":{"0":"RAM, 32G","1":"RAM, 64G","2":"RAM, 128G"},"803":{"0":"SSD, 128G","1":"SSD, 256G","2":"SSD, 512G","3":"SSD, 1TB","4":"SSD, 2TB"},"805":{"0":"Controller, CONTROLLER, FADUINO-32TA","1":"Controller, CONTROLLER, BMS","2":"Controller, CONTROLLER, BCU","3":"CONTROLLER, BRAKE_CHOPPER","4":"CONTROLLER, BRAKE_PWM","5":"CONTROLLER, MARKER, COM-13716"},"810":{"0":"3D LiDAR, 3D LIDAR, QT64","1":"3D LiDAR, 3D LIDAR, XT16","2":"3D LiDAR, 3D LIDAR, QT64 IF","3":"3D LiDAR, 3D LIDAR, MID360"},"811":{"0":"2D LiDAR, SLAMTEC RPLIDAR S3","1":"2D LiDAR, 2D LIDAR, CABLE ADAPTOR"},"813":{"0":"Camera, CAMERA, D405","1":"Camera, CAMERA, ZEDxMINI","10":"Camera, DS-2DE4215IW-DE 2MP","11":"Camera, DS-2CD2D25G1"},"814":{"0":"Ultrasonic, ME007YS\n(DFRobot)"},"815":{"0":"GPS Receiver, F9P","1":"GPS Receiver, MRP-2000"},"816":{"0":"IMU, N100"},"830":{"0":"USB HUB, ULI-417H","1":"USB HUB, BB-USH207"},"831":{"0":"Ethernet HUB, ETHERNET HUB, EKI-2725/i-CE","1":"Ethernet HUB, DS-3E0109P-E"},"832":{"0":"CAN Interface, CAN IF, Kvaser PRO 2XHS","1":"CAN Interface, CAN IF, PCAN USB"},"833":{"0":"RECODER, DS-E04NI-Q1_4P_SSD 2T","1":"RECODER, AE-MN5043"},"840":{"0":"BATTERY, 13S15P-48X","1":"BATTERY, 4S52P","2":"BATTERY, 13S21P-35E"},"841":{"0":"DC CONVERTER, SD500L-12","1":"DC CONVERTER, DDR-120A-48","2":"DC CONVERTER, SD-50A-5","3":"DC CONVERTER, SD-100A-12","4":"DC CONVERTER, DDR-15L-5","5":"DC CONVERTER, TEP 150-4812-WI","6":"DC CONVERTER, TEP 200-4815WIRCMF"},"842":{"0":"CHARGING PARTS, AUTO Charger","1":"CHARGING PARTS, DCNHR40PF12-01","2":"CHARGING PARTS, BATTERY CONTACT (48V 탈착식)"},"843":{"0":"SPEAKER, KH-4022D","1":"SPEAKER, BZ-MS200"},"844":{"0":"Serial Convertor, SERIAL CONVERTOR, USBTOUART8CH"},"845":{"0":"Fuse, FUSE, ATOFUSE","1":"Fuse, FUSE, 0498040.M","2":"ATO FUSE, 0287003._","3":"ATO FUSE, 0287005._","5":"ATO FUSE, 028707.5.__","6":"ATO FUSE, 0287015._","7":"ATO FUSE, 0287040._"},"846":{"0":"Fuse Box, FUSE BOX, PDM61001ZXM","1":"Fuse Box, FUSE BOX, 04980921GXM5"},"847":{"0":"BATTERY CHARGER, 0.25C"},"850":{"0":"WAP\n*Wireless Access Point, WAP, CNR-L680","1":"WAP\n*Wireless Access Point, WAP, AWK-1151C","2":"WAP\n*Wireless Access Point, WAP, CISCO(IW9165E-ROW-URWB)","10":"WAP\n*Wireless Access Point, ST-10"},"851":{"0":"Antenna, ANN-MB0\n(GPS Ant)","1":"Antenna, RPSMA Antenna","2":"Antenna, ANTENNA, SMA ADAPTOR RIGHT ANGLE","8":"Antenna, COVER"},"860":{"0":"SWITCH, 880062\n(Littlefuse)","1":"SWITCH, 200A","2":"SWITCH, 100A","3":"SWITCH, HX19-A5\n(Metal)","10":"SWITCH, LB22M5.4","11":"SWITCH, EMO"},"861":{"0":"RELAY, JK-UR-8","1":"RELAY, JK-UR-4","2":"RELAY, WYR1C0310D4","3":"RELAY, AK-C21008"},"862":{"0":"LIGHT, LED Light ASSY, WS2811","1":"LIGHT, WS2812","3":"LIGHT, LED Light FRT, WS2811","4":"LIGHT, LED Light MID, WS2811","5":"LIGHT, LED Light RH, WS2811","6":"LIGHT, LED Light LH, WS2811","7":"LIGHT, LED Light RR, WS2811","8":"LIGHT, LED Light LWR, WS2811"},"863":{"0":"CABLE, SMA_F TO SMA_M 1M","1":"CABLE, SMA_F TO SMA_M 2M","2":"AOS CABLE ASSY","10":"CABLE, USB C to A 30cm","11":"CABLE, USB Micro B to USB A 3.2 1.5M","12":"CABLE, USB Micro B to USB A 3.2 2M","13":"USB Micro B to USB A 3.2 1300mm","14":"USB Micro B to USB A 3.2 950mm","20":"CABLE, CAT6 15cm","21":"CABLE, CAT6 30cm","22":"CABLE, CAT6 1M","23":"CABLE, CAT6 1.5M","24":"CABLE, CAT6 2M","25":"CAT5.E_100mm_PC_EHUB","26":"CAT5.E_920mm_PC_CISCO"},"864":{"0":"CONNECTOR, ANDERSON 120A","1":"CONNECTOR, ANDERSON 50A","2":"CONNECTOR, MG645785-5\n(QD, Conn, Male)","3":"CONNECTOR, MG656968-4\n(QD/D, Sensor Conn)","4":"CONNECTOR, MG656968-4\n(QD/D, PP Conn)","5":"CONNECTOR, DD120 ECU Conn"},"865":{"0":"CABLE ACCESARY, CABLE VEYOR"},"866":{"0":"TERMINAL, 927835-1\n(ATO Fuse terminal, TE)","1":"TERMINAL, ST30722-3\n(QD, Power)","2":"TERMINAL, ST731368-3\n(QD, Signal)","3":"TERMINAL, SPS35-M8/6xM5","4":"TERMINAL, Terminal Block XTB-COM18T"},"867":{"0":"TERMINAL BLOCK, SPS35-M8_6XM5\n(삼원액트)","1":"TERMINAL BLOCK, ACS-20L\n(Autonics)"},"868":{"0":"PORT, LP-24-J\n(HDMI)","1":"PORT, LP-24-J       \n(USB3)","2":"PORT, LP-16-J\n(RJ45)","3":"PORT, DSUB9"},"869":{"0":"SEAL, 963244-1\n(ATO Fuse Seal, TE)","1":"SEAL, MG685469\n(QD/T, Power)","2":"SEAL, MG685391\n(QD/T, Signal)","3":"SEAL, O-RING S115-NBR-70"},"890":{"0":"ETC, JS-C35\n(Battery meter)","1":"ETC, EARTH-BAR(MTS6-M4-3P)","2":"ETC, 22SQ 1M\n(편조 어스 케이블)","3":"ETC, JOTN 60A\n(조립식 단자대)","4":"ETC, JTAN 60\n(세퍼레이터)","5":"ETC, JTSN-2\n(단자대 스토퍼)","6":"ETC, MGA6012YR-O10\n(FAN)","7":"ETC, JTRN4\n(DIN Rail)","8":"ETC, FAN, 1608VL","9":"ETC, CABLE HOLDER-M3","10":"ETC, CABLE HOLDER-M4","11":"CABLE TIE MOUNT, JOLM-3","12":"CABLE TIE MOUNT, JOLM-4"},"900":{"0":"FLANGE BOLT, TILTING","1":"FLANGE BOLT, M12-20","2":"FLANGE BOLT, M6-50"},"901":{"0":"HEX BOLT, M6-22","1":"M5-25"},"902":{"0":"SOCKET HEAD BOLT, M4-12","1":"SOCKET HEAD BOLT, M5-12","2":"SOCKET HEAD BOLT, M3-10","3":"SOCKET HEAD BOLT, M4-8","4":"SOCKET HEAD BOLT, M3-15","5":"SOCKET HEAD BOLT, M4-10","6":"SOCKET HEAD BOLT, M8-30","7":"SOCKET HEAD BOLT, M6-40","8":"SOCKET HEAD BOLT, M8-20","9":"SOCKET HEAD BOLT, M4-15","10":"SOCKET HEAD BOLT, M4-55","11":"SOCKET HEAD BOLT, M5-15","12":"SOCKET HEAD BOLT, M4-55","13":"SOCKET HEAD BOLT, M8-25","14":"SOCKET HEAD BOLT, M4-6","15":"SOCKET HEAD BOLT, M3-8","16":"SOCKET HEAD BOLT, M8-45","17":"SOCKET HEAD BOLT, M8-60","18":"SOCKET HEAD BOLT, M5-20","19":"SOCKET HEAD BOLT, M10-12","20":"SOCKET HEAD BOLT, M4-20","21":"SOCKET HEAD BOLT, M5-40","22":"SOCKET HEAD BOLT, M4-30","23":"SOCKET HEAD BOLT, M3-28","24":"SOCKET HEAD BOLT, M3-5","25":"SOCKET HEAD BOLT, M6-20","26":"SOCKET HEAD BOLT, M4-35","27":"SOCKET HEAD BOLT, M5-35","28":"SOCKET HEAD BOLT, M6-25","29":"SOCKET HEAD BOLT, M6-15","30":"SOCKET HEAD BOLT, M6-18","31":"SOCKET HEAD BOLT, M6-30","32":"SOCKET HEAD BOLT, M6-35","33":"SOCKET HEAD BOLT, M8-40","34":"SOCKET HEAD BOLT, M5-30","35":"SOCKET HEAD BOLT, M5-70","36":"SOCKET HEAD BOLT, M3-6","37":"SOCKET HEAD BOLT, M5-25","38":"SOCKET HEAD BOLT, M8-10","39":"SOCKET HEAD BOLT, M5-45","40":"SOCKET HEAD BOLT, M8-16","41":"SOCKET HEAD BOLT, M5 - 10","42":"SOCKET HEAD BOLT, FLAT M8 - 15","43":"SOCKET HEAD BOLT, M4-14","44":"SOCKET HEAD BOLT, FLAT M10-20","45":"M5-8","46":"M3-22","47":"SOCKET HEAD BOLT(FLAT), M2.5-8"},"903":{"0":"BUTTON HEAD BOLT, M5-6 (+)"},"904":{"0":"FLAT HEAD BOLT, M4-6","1":"FLAT HEAD BOLT, M5-20","2":"FLAT HEAD BOLT, M3-10","3":"FLAT HEAD BOLT, M3-8","4":"FLAT HEAD BOLT, M4-8","5":"FLAT HEAD BOLT, M5-15","6":"FLAT HEAD BOLT, M8-50","7":"FLAT HEAD BOLT, M5-10","8":"FLAT HEAD BOLT, M5 - 20","9":"FLAT HEAD BOLT, FLAT HAED BOLT, M3-6","10":"FLAT HEAD BOLT, FLAT HAED BOLT, M4-10","11":"FLAT HEAD BOLT,  M6-20","12":"FLAT HEAD BOLT, M8-30","13":"FLAT HEAD BOLT, M3-4"},"906":{"0":"SET SCREW (무두볼트), Socket Set Bolt M4-4","1":"SET SCREW (무두볼트), SET SCREW, M4-8","2":"SET SCREW (무두볼트), SET SCREW, M8-30"},"907":{"0":"SEMS BOLT (스프링,와셔삽입볼트), SEMS BOLT, M4-8","1":"SEMS BOLT (스프링,와셔삽입볼트), SEMS BOLT, M3-8","2":"SEMS BOLT, M5-12","3":"SEMS BOLT, M3-6","4":"SEMS BOLT, M3-6 (BK)","5":"SEMS BOLT, M3-5","6":"SEMS BOLT, M3-15","7":"SEMS BOLT, M3-10","8":"SEMS BOLT, M4-10(BK)","9":"SEMS BOLT, M3-25","10":"SEMS BOLT, M3-12"},"909":{"0":"ETC. BOLT/SCREW, M4-8 (NARROW)","1":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM4-8","2":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM4-10","3":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM4-15","4":"ETC. BOLT/SCREW, Cross Hole Round Head Bolt\nM5-10","5":"ETC. BOLT/SCREW, Cross Hole Round Head Screw\nM5-10","6":"ETC. BOLT/SCREW, Cross Hole Countersink Head Bolt\nM6-20","7":"ETC. BOLT/SCREW, Stud Bolt, M8-24.8","8":"INCH BOLT, 6-32_1/4\""},"911":{"0":"HEX NUT, M6","1":"HEX NUT, M4","2":"HEX NUT, M24","3":"HEX NUT, M12"},"912":{"0":"LOCK NUT, M16","1":"M3"},"916":{"0":"SQURE NUT, NSQA-SUS-M6"},"920":{"0":"WASHER, M12","1":"WASHER, M4 WASHER","2":"WASHER, M5 WASHER","3":"WASHER, M10, T1.2","4":"WASHER, GSPWF10"},"921":{"0":"SPRING WASHER, SSLW12","1":"SPRING WASHER, M5 SPRING WASHER","2":"SPRING WASHER, GSSLW10"},"922":{"0":"SPACER, DWSSM-D25-V20.5-T7 \n(S45C)","1":"SPACER, FWSSB-D25-V20.5-T7\n(황동)","2":"SPACER, FWSBB-D25-V20.5-T7"},"923":{"0":"SUPPORT, E-PETG10-20-M3-N3","1":"SUPPORT, C-PETGR8-20","2":"SUPPORT, C-PLSBWRK6-30"},"930":{"0":"MACHINE KEY, 8X7X45","1":"MACHINE KEY, 6X6X15","2":"MACHINE KEY, 5X5X15","3":"MACHINE KEY, 5X5X12","4":"MACHINE KEY, 6X6X45","5":"MACHINE KEY, 5X5X35"},"931":{"0":"SNAP RING (H), HHK-HCRFZ52"},"932":{"0":"SNAP RING (S), SNAP RING(S), STWN20","1":"SNAP RING (S), S-15","2":"SNAP RING (S), RTWS32","3":"SNAP RING (S), SNAP RING(S), STWS20","4":"SNAP RING (S), STWS10","5":"SNAP RING (S), S40","6":"SNAP RING (S), E-GSLPFG-D3-L5"},"933":{"0":"PIN, POSITION 6-10","1":"PIN, 8-50","2":"PIN, POSITION 3-10","3":"PIN, POSITION PIN, WORM WHEEL(Ø6-20)","4":"PIN, 8-25","5":"PIN, E-GSLPFP-D6-L10","6":"PIN, POSITION PIN, (Ø8-25, DOWEL PIN)","7":"POSITION PIN, 6mm-13","8":"POSITION PIN, 5mm-10"},"960":{"0":"SEAL, AN037","1":"SEAL, TC30X45X8","2":"SEAL, COMPOUND"},"961":{"0":"GASKET, RBFMA3-5"},"965":{"0":"LUBRICATOR, RING GUIDE"},"971":{"0":"RAIL, DIN JTRN4"},"980":{"0":"MAGNET, D15x3T (Hmagnet)"}}};
+
+// Products
+const PRODUCTS = {
+  RP: 'PARKIE', RD: 'DD-DRIVING', RG: 'GOALIE',
+  RZ: 'COMMON PARTS', RQ: 'QD-DRIVING', RS: 'STANLEY'
+};
+
+// In-memory new parts registry (shared via localStorage-like storage)
+let newParts = [];
+
+// =============================================
+// STORAGE (using persistent Artifact storage)
+// =============================================
+const STORAGE_KEY = 'hl_robotics_parts_db';
+
+async function loadNewParts() {
+  try {
+    const result = await window.storage.get(STORAGE_KEY);
+    if (result && result.value) {
+      newParts = JSON.parse(result.value);
+    }
+  } catch(e) {
+    // Storage not available or empty
+    newParts = [];
+  }
+  updateStats();
+  renderDB();
+}
+
+async function saveNewParts() {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(newParts));
+  } catch(e) {
+    console.warn('Storage save failed', e);
+  }
+}
+
+// =============================================
+// STATS
+// =============================================
+function updateStats() {
+  const base = Object.keys(FLAT_DB).length;
+  document.getElementById('totalParts').textContent = (base + newParts.length).toLocaleString();
+  document.getElementById('newPartsCount').textContent = newParts.length.toLocaleString();
+}
+
+// =============================================
+// TABS
+// =============================================
+function switchTab(tab) {
+  document.querySelectorAll('#tabs-parts .tab').forEach(t => t.classList.remove('active'));
+  const tabIds = ['search','generate','database'];
+  document.querySelectorAll('#tabs-parts .tab').forEach((t,i) => {
+    if(tabIds[i]===tab) t.classList.add('active');
+  });
+  ['search','generate','database'].forEach(id => {
+    const el = document.getElementById('panel-'+id);
+    if(el) el.classList.toggle('active', id===tab);
+  });
+  if (tab === 'database') renderDB();
+  if (tab === 'generate') {
+    const prod = document.getElementById('genProduct').value;
+    if (prod) renderBlockUsage(prod);
+  }
+}
+
+function switchSpecTab(tab) {
+  document.querySelectorAll('#tabs-spec .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#tabs-spec .tab').forEach(t => {
+    if(t.getAttribute('onclick').includes(tab)) t.classList.add('active');
+  });
+  ['spec-search','spec-generate','spec-database','spec-admin'].forEach(id => {
+    const el = document.getElementById('panel-'+id);
+    if(el) el.classList.toggle('active', id===tab);
+  });
+  if(tab==='spec-database') renderSpecDB();
+  if(tab==='spec-admin') renderAdminCategories();
+}
+
+// =============================================
+// SEARCH
+// =============================================
+function normalizePN(raw) {
+  // Accepts: RP130000, RP-130-000, rp-130-000, RP130-000 etc
+  raw = raw.trim().toUpperCase().replace(/[\s]/g,'');
+  
+  // If already formatted
+  if (/^R[A-Z]-\d{3}-\d{3}$/.test(raw)) return raw;
+  
+  // Try to parse: 2 letters + 6 digits
+  const m1 = raw.match(/^(R[A-Z])(\d{3})(\d{3})$/);
+  if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+  
+  // Try: 2 letters + dash + 3 + dash + 3
+  const m2 = raw.match(/^(R[A-Z])[-]?(\d{3})[-]?(\d{3})$/);
+  if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+  
+  return raw;
+}
+
+function onSearchInput(val) {
+  if (val.length >= 9) doSearch();
+}
+
+function doSearch() {
+  const raw = document.getElementById('searchInput').value;
+  if (!raw.trim()) { showResult('empty'); return; }
+  
+  const pn = normalizePN(raw);
+  const resultEl = document.getElementById('searchResult');
+  
+  // Check original DB
+  if (FLAT_DB[pn]) {
+    const parts = pn.split('-');
+    const product = parts[0];
+    const block = parseInt(parts[1]);
+    const serial = parseInt(parts[2]);
+    showSearchFound(pn, FLAT_DB[pn], product, block, serial, false);
+    return;
+  }
+  
+  // Check new parts
+  const newPart = newParts.find(p => p.part_number === pn);
+  if (newPart) {
+    showSearchFound(pn, newPart.name || '(품명 미입력)', newPart.product, newPart.block_code, newPart.serial, true);
+    return;
+  }
+  
+  // Not found
+  resultEl.className = 'result not-found';
+  resultEl.innerHTML = `
+    <div class="result-inner">
+      <div style="color:var(--red); font-family:var(--mono); font-size:14px; font-weight:600; margin-bottom:4px;">
+        ✗ &nbsp;등록되지 않은 품번
+      </div>
+      <div style="color:var(--text3); font-size:13px;">
+        <span style="font-family:var(--mono); color:var(--text2);">${pn}</span> 은(는) 데이터베이스에 존재하지 않습니다.
+      </div>
+    </div>
+  `;
+}
+
+function showSearchFound(pn, name, product, block, serial, isNew) {
+  const resultEl = document.getElementById('searchResult');
+  resultEl.className = 'result found';
+  const blockStr = String(block).padStart(3,'0');
+  const serialStr = String(serial).padStart(3,'0');
+  resultEl.innerHTML = `
+    <div class="result-inner">
+      <div class="result-pn">${pn}</div>
+      <div class="result-name">${name}</div>
+      <div class="result-meta">
+        <span class="tag tag-product">${product} · ${PRODUCTS[product] || product}</span>
+        <span class="tag tag-block">BLOCK ${blockStr}</span>
+        <span class="tag tag-serial">SERIAL ${serialStr}</span>
+        ${isNew ? '<span class="tag tag-new">NEW</span>' : ''}
+      </div>
+    </div>
+  `;
+}
+
+// =============================================
+// GENERATE
+// =============================================
+let pendingPN = null;
+let pendingData = null;
+
+function getAllUsedSerials(product, blockCode) {
+  const bc = String(blockCode);
+  const used = new Set();
+  
+  // From original DB
+  if (LOOKUP[product] && LOOKUP[product][bc]) {
+    Object.keys(LOOKUP[product][bc]).forEach(s => used.add(parseInt(s)));
+  }
+  
+  // Also check integer block (some stored as 10 vs "010")
+  const bcInt = parseInt(blockCode);
+  if (LOOKUP[product]) {
+    for (const key of Object.keys(LOOKUP[product])) {
+      if (parseInt(key) === bcInt) {
+        Object.keys(LOOKUP[product][key]).forEach(s => used.add(parseInt(s)));
+      }
+    }
+  }
+  
+  // From new parts
+  newParts.forEach(p => {
+    if (p.product === product && p.block_code === bcInt) {
+      used.add(p.serial);
+    }
+  });
+  
+  return used;
+}
+
+function getNextSerial(product, blockCode) {
+  const used = getAllUsedSerials(product, blockCode);
+  for (let i = 0; i <= 999; i++) {
+    if (!used.has(i)) return i;
+  }
+  return null; // all taken
+}
+
+function onGenChange() {
+  // Hide confirm if showing
+  document.getElementById('confirmBox').classList.remove('show');
+  document.getElementById('genResult').style.display = 'none';
+  pendingPN = null;
+  pendingData = null;
+  
+  const prod = document.getElementById('genProduct').value;
+  const block = document.getElementById('genBlock').value;
+  
+  if (prod) {
+    renderBlockUsage(prod);
+    
+    if (block !== '' && block >= 0 && block <= 999) {
+      const bc = parseInt(block);
+      const used = getAllUsedSerials(prod, bc);
+      const nextSerial = getNextSerial(prod, bc);
+      
+      let hint = '';
+      if (used.size > 0) {
+        hint = `현재 사용중: ${[...used].sort((a,b)=>a-b).slice(0,8).map(s=>String(s).padStart(3,'0')).join(', ')}${used.size > 8 ? ` 외 ${used.size-8}개` : ''}`;
+      } else {
+        hint = '이 블록 코드의 첫 번째 부품';
+      }
+      document.getElementById('blockHint').textContent = hint;
+    } else {
+      document.getElementById('blockHint').textContent = '';
+    }
+  }
+}
+
+function generateNumber() {
+  const prod = document.getElementById('genProduct').value;
+  const blockRaw = document.getElementById('genBlock').value;
+  const name = document.getElementById('genName').value.trim();
+  
+  if (!prod) { showNotif('제품군을 선택해주세요.', 'error'); return; }
+  if (blockRaw === '' || isNaN(parseInt(blockRaw))) { showNotif('블록 코드를 입력해주세요.', 'error'); return; }
+  
+  const block = parseInt(blockRaw);
+  if (block < 0 || block > 999) { showNotif('블록 코드는 000~999 범위여야 합니다.', 'error'); return; }
+  
+  const nextSerial = getNextSerial(prod, block);
+  
+  if (nextSerial === null) {
+    showNotif('이 블록 코드의 시리얼 번호가 모두 소진되었습니다 (000~999).', 'error');
+    return;
+  }
+  
+  const blockStr = String(block).padStart(3,'0');
+  const serialStr = String(nextSerial).padStart(3,'0');
+  const pn = `${prod}-${blockStr}-${serialStr}`;
+  
+  pendingPN = pn;
+  pendingData = { part_number: pn, product: prod, block_code: block, serial: nextSerial, name: name || '(미입력)' };
+  
+  // Show result
+  const resEl = document.getElementById('genResult');
+  resEl.style.display = 'flex';
+  document.getElementById('genResultInner').innerHTML = `
+    <div style="width:100%">
+      <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); margin-bottom:6px;">생성된 품번</div>
+      <div class="new-pn-display">${pn}</div>
+      <div class="result-meta" style="margin-top:4px;">
+        <span class="tag tag-product">${prod} · ${PRODUCTS[prod]}</span>
+        <span class="tag tag-block">BLOCK ${blockStr}</span>
+        <span class="tag tag-serial">SERIAL ${serialStr}</span>
+        <span class="tag tag-new">NEW</span>
+      </div>
+      ${name ? `<div style="margin-top:10px; font-size:13px; color:var(--text2);">품명: <span style="color:var(--text)">${name}</span></div>` : ''}
+    </div>
+  `;
+  
+  // Show confirm box
+  const cb = document.getElementById('confirmBox');
+  cb.classList.add('show');
+  document.getElementById('confirmPN').textContent = pn;
+  document.getElementById('confirmProduct').textContent = `${prod} · ${PRODUCTS[prod]}`;
+  document.getElementById('confirmBlock').textContent = blockStr;
+  document.getElementById('confirmName').textContent = name || '(미입력)';
+}
+
+async function confirmRegister() {
+  if (!pendingPN || !pendingData) return;
+  
+  // Double-check not already in DB (race condition guard)
+  if (FLAT_DB[pendingPN] || newParts.find(p => p.part_number === pendingPN)) {
+    showNotif('이미 등록된 품번입니다. 다시 생성해주세요.', 'error');
+    cancelRegister();
+    onGenChange();
+    return;
+  }
+  
+  pendingData.registered_at = new Date().toISOString();
+  newParts.push(pendingData);
+  await saveNewParts();
+  updateStats();
+  
+  showNotif(`✓ ${pendingPN} 등록 완료`, 'success');
+  
+  // Reset form
+  document.getElementById('genProduct').value = '';
+  document.getElementById('genBlock').value = '';
+  document.getElementById('genName').value = '';
+  document.getElementById('genResult').style.display = 'none';
+  document.getElementById('confirmBox').classList.remove('show');
+  document.getElementById('blockHint').textContent = '';
+  document.getElementById('blockUsageArea').innerHTML = '<div style="color:var(--text3); font-size:13px; font-family:var(--mono);">제품군을 선택하면 블록 코드 현황을 확인할 수 있습니다.</div>';
+  pendingPN = null;
+  pendingData = null;
+}
+
+function cancelRegister() {
+  document.getElementById('confirmBox').classList.remove('show');
+  document.getElementById('genResult').style.display = 'none';
+  pendingPN = null;
+  pendingData = null;
+}
+
+// =============================================
+// BLOCK USAGE
+// =============================================
+function renderBlockUsage(prod) {
+  const el = document.getElementById('blockUsageArea');
+  
+  // Gather all block codes for this product
+  const blockMap = {};
+  
+  if (LOOKUP[prod]) {
+    for (const [bc, serials] of Object.entries(LOOKUP[prod])) {
+      const bcInt = parseInt(bc);
+      if (!blockMap[bcInt]) blockMap[bcInt] = { original: 0, new: 0 };
+      blockMap[bcInt].original = Object.keys(serials).length;
+    }
+  }
+  
+  newParts.filter(p => p.product === prod).forEach(p => {
+    const bc = p.block_code;
+    if (!blockMap[bc]) blockMap[bc] = { original: 0, new: 0 };
+    blockMap[bc].new++;
+  });
+  
+  const keys = Object.keys(blockMap).map(Number).sort((a,b)=>a-b);
+  
+  if (keys.length === 0) {
+    el.innerHTML = '<div style="color:var(--text3); font-size:13px; font-family:var(--mono);">이 제품군의 블록 코드 데이터가 없습니다.</div>';
+    return;
+  }
+  
+  let html = '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
+  keys.forEach(bc => {
+    const data = blockMap[bc];
+    const total = data.original + data.new;
+    const bcStr = String(bc).padStart(3,'0');
+    html += `
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 14px; min-width:90px; cursor:pointer;"
+           onclick="document.getElementById('genBlock').value='${bc}'; onGenChange();"
+           title="클릭하여 선택">
+        <div style="font-family:var(--mono); font-size:15px; font-weight:700; color:var(--yellow);">${bcStr}</div>
+        <div style="font-size:11px; color:var(--text3); margin-top:2px;">${total}개 등록</div>
+        ${data.new > 0 ? `<div style="font-size:10px; color:var(--orange); margin-top:1px;">+${data.new} 신규</div>` : ''}
+      </div>
+    `;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// =============================================
+// DATABASE VIEW
+// =============================================
+function renderDB() {
+  const search = (document.getElementById('dbSearch').value || '').toLowerCase();
+  const filter = document.getElementById('dbFilter').value;
+  
+  let filtered = newParts.filter(p => {
+    if (filter && p.product !== filter) return false;
+    if (search && !p.part_number.toLowerCase().includes(search) && !(p.name||'').toLowerCase().includes(search)) return false;
+    return true;
+  });
+  
+  document.getElementById('dbCount').textContent = `${filtered.length}개 항목 (전체 ${newParts.length}개)`;
+  
+  const wrap = document.getElementById('dbTableWrap');
+  
+  if (newParts.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-db">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+        <div>아직 신규 등록된 품번이 없습니다</div>
+      </div>
+    `;
+    return;
+  }
+  
+  if (filtered.length === 0) {
+    wrap.innerHTML = '<div style="text-align:center; padding:32px; color:var(--text3); font-family:var(--mono); font-size:13px;">검색 결과가 없습니다</div>';
+    return;
+  }
+  
+  // Sort by newest first
+  const sorted = [...filtered].sort((a,b) => new Date(b.registered_at) - new Date(a.registered_at));
+  
+  let html = `
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>품번</th>
+          <th>품명</th>
+          <th>제품군</th>
+          <th>블록코드</th>
+          <th>시리얼</th>
+          <th>등록일시</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  sorted.forEach(p => {
+    const date = p.registered_at ? new Date(p.registered_at) : null;
+    const dateStr = date ? date.toLocaleString('ko-KR', {
+      year: '2-digit', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    }) : '—';
+    
+    html += `
+      <tr>
+        <td class="pn-cell">${p.part_number}</td>
+        <td class="name-cell">${p.name || '—'}</td>
+        <td><span class="tag tag-product">${p.product}</span></td>
+        <td><span class="tag tag-block">${String(p.block_code).padStart(3,'0')}</span></td>
+        <td><span class="tag tag-serial">${String(p.serial).padStart(3,'0')}</span></td>
+        <td class="date-cell">${dateStr}</td>
+      </tr>
+    `;
+  });
+  
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// =============================================
+// NOTIFICATIONS
+// =============================================
+function showNotif(msg, type='info') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className = 'notif ' + type;
+  setTimeout(() => el.classList.add('show'), 10);
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+
+// =============================================
+// SPEC SYSTEM
+// =============================================
+const SPEC_STORAGE_KEY = 'hl_robotics_spec_db';
+const SPEC_CAT_KEY     = 'hl_robotics_spec_categories';
+const SPEC_PW_KEY      = 'hl_robotics_admin_pw';
+
+let specParts = [];
+let adminLoggedIn = false;
+
+// Default categories (preloaded)
+const DEFAULT_CATEGORIES = {
+  RES: [
+    { code: 'C1', name: 'Connector',    desc: '커넥터 규격' },
+    { code: 'C2', name: 'Caster',       desc: '캐스터 규격' },
+    { code: 'L1', name: 'Lifter',       desc: '리프터 규격' },
+    { code: 'M1', name: 'Motor',        desc: '모터 규격' },
+    { code: 'B1', name: 'Bearing',      desc: '베어링 규격' },
+    { code: 'S1', name: 'Sensor',       desc: '센서 규격' },
+    { code: 'F1', name: 'Frame',        desc: '프레임 규격' },
+    { code: 'G1', name: 'Gear',         desc: '기어·감속기 규격' },
+  ],
+  RMS: []
+};
+
+let specCategories = { RES: [...DEFAULT_CATEGORIES.RES], RMS: [...DEFAULT_CATEGORIES.RMS] };
+
+// ── Storage ──────────────────────────────────────────────────────────────
+async function loadSpecData() {
+  try {
+    const r1 = await window.storage.get(SPEC_STORAGE_KEY);
+    if (r1 && r1.value) specParts = JSON.parse(r1.value);
+    const r2 = await window.storage.get(SPEC_CAT_KEY);
+    if (r2 && r2.value) {
+      const saved = JSON.parse(r2.value);
+      specCategories = { RES: saved.RES || DEFAULT_CATEGORIES.RES, RMS: [] };
+    }
+  } catch(e) {}
+  updateSpecStats();
+  renderSpecCategoryReference();
+  populateSpecCatFilter();
+}
+
+async function saveSpecParts() {
+  try { await window.storage.set(SPEC_STORAGE_KEY, JSON.stringify(specParts)); } catch(e) {}
+}
+async function saveSpecCategories() {
+  try { await window.storage.set(SPEC_CAT_KEY, JSON.stringify(specCategories)); } catch(e) {}
+}
+async function getAdminPw() {
+  try {
+    const r = await window.storage.get(SPEC_PW_KEY);
+    return (r && r.value) ? r.value : 'hlrobotics';
+  } catch(e) { return 'hlrobotics'; }
+}
+async function setAdminPw(pw) {
+  try { await window.storage.set(SPEC_PW_KEY, pw); } catch(e) {}
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+function updateSpecStats() {
+  document.getElementById('specCount').textContent = specParts.length.toLocaleString();
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────
+async function adminLogin() {
+  const input = document.getElementById('adminPwInput').value;
+  const correct = await getAdminPw();
+  if (input === correct) {
+    adminLoggedIn = true;
+    document.getElementById('adminLoginBox').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    renderAdminCategories();
+    showNotif('관리자 모드 활성화', 'success');
+  } else {
+    showNotif('비밀번호가 올바르지 않습니다.', 'error');
+    document.getElementById('adminPwInput').value = '';
+  }
+}
+
+function adminLogout() {
+  adminLoggedIn = false;
+  document.getElementById('adminLoginBox').style.display = 'block';
+  document.getElementById('adminContent').style.display = 'none';
+  document.getElementById('adminPwInput').value = '';
+}
+
+async function changeAdminPw() {
+  const p1 = document.getElementById('newPw1').value;
+  const p2 = document.getElementById('newPw2').value;
+  if (!p1) { showNotif('새 비밀번호를 입력하세요.', 'error'); return; }
+  if (p1 !== p2) { showNotif('비밀번호가 일치하지 않습니다.', 'error'); return; }
+  await setAdminPw(p1);
+  document.getElementById('newPw1').value = '';
+  document.getElementById('newPw2').value = '';
+  showNotif('비밀번호가 변경되었습니다.', 'success');
+}
+
+function renderAdminCategories() {
+  ['RES'].forEach(type => {
+    const listEl = document.getElementById(type.toLowerCase() + 'CatList');
+    if (!listEl) return;
+    const cats = specCategories[type] || [];
+    const color = type === 'RES' ? 'var(--accent)' : 'var(--yellow)';
+
+    if (cats.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding:24px; color:var(--text3); font-size:13px; border:1px dashed var(--border); border-radius:6px;">
+        등록된 카테고리가 없습니다.<br><span style="font-size:11px;">위 양식에서 새 카테고리를 추가하세요.</span>
+      </div>`;
+      return;
+    }
+
+    const usageCounts = {};
+    specParts.forEach(p => {
+      if (p.spec_type === type) {
+        usageCounts[p.category_code] = (usageCounts[p.category_code] || 0) + 1;
+      }
+    });
+
+    let html = `<table class="db-table">
+      <thead><tr>
+        <th style="width:70px;">코드</th>
+        <th>명칭</th>
+        <th>설명</th>
+        <th style="width:80px; text-align:center;">사용 수</th>
+        <th style="width:60px; text-align:center;">삭제</th>
+      </tr></thead><tbody>`;
+
+    cats.forEach((cat, i) => {
+      const cnt = usageCounts[cat.code] || 0;
+      html += `<tr>
+        <td><span style="font-family:var(--mono); font-weight:700; font-size:15px; color:${color};">${cat.code}</span></td>
+        <td style="font-weight:500; color:var(--text);">${cat.name}</td>
+        <td style="font-size:12px; color:var(--text3);">${cat.desc || '—'}</td>
+        <td style="text-align:center;">
+          <span style="font-family:var(--mono); font-size:13px; color:${cnt>0?'var(--green)':'var(--text3)'};">${cnt}개</span>
+        </td>
+        <td style="text-align:center;">
+          <button class="cat-item-del" onclick="deleteCategory('${type}', ${i})" 
+            title="${cnt>0?'사용 중인 카테고리는 삭제 불가':'삭제'}"
+            style="${cnt>0?'opacity:0.3; cursor:not-allowed;':''}">×</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    listEl.innerHTML = html;
+  });
+}
+
+async function addCategory(type) {
+  const codeEl = document.getElementById('new' + (type==='RES'?'Res':'Rms') + 'CatCode');
+  const nameEl = document.getElementById('new' + (type==='RES'?'Res':'Rms') + 'CatName');
+  const descEl = document.getElementById('new' + (type==='RES'?'Res':'Rms') + 'CatDesc');
+
+  const code = codeEl.value.trim().toUpperCase();
+  const name = nameEl.value.trim();
+  const desc = descEl.value.trim();
+
+  if (!code) { showNotif('카테고리 코드를 입력하세요.', 'error'); return; }
+  if (!name) { showNotif('카테고리 명칭을 입력하세요.', 'error'); return; }
+  if (!/^[A-Z]{1,2}[0-9]{1,2}$/.test(code)) {
+    showNotif('코드 형식: 알파벳 1~2자 + 숫자 1~2자 (예: C1, C2, L1, AB12)', 'error'); return;
+  }
+  if (specCategories[type].find(c => c.code === code)) {
+    showNotif(`${code} 코드가 이미 존재합니다.`, 'error'); return;
+  }
+
+  specCategories[type].push({ code, name, desc });
+  specCategories[type].sort((a,b) => a.code.localeCompare(b.code));
+  await saveSpecCategories();
+
+  codeEl.value = ''; nameEl.value = ''; descEl.value = '';
+  renderAdminCategories();
+  renderSpecCategoryReference();
+  populateSpecCatFilter();
+  updateSpecCategorySelect();
+  showNotif(`${type} · ${code} (${name}) 추가 완료`, 'success');
+}
+
+async function deleteCategory(type, idx) {
+  const cat = specCategories[type][idx];
+  const inUse = specParts.some(p => p.spec_type === type && p.category_code === cat.code);
+  if (inUse) {
+    showNotif(`이 카테고리를 사용 중인 Spec 품번이 있어 삭제할 수 없습니다.`, 'error'); return;
+  }
+  if (!confirm(`"${cat.code} · ${cat.name}" 카테고리를 삭제하시겠습니까?`)) return;
+  specCategories[type].splice(idx, 1);
+  await saveSpecCategories();
+  renderAdminCategories();
+  renderSpecCategoryReference();
+  populateSpecCatFilter();
+  updateSpecCategorySelect();
+  showNotif('삭제 완료', 'info');
+}
+
+// ── Category helpers ──────────────────────────────────────────────────────
+function getCatInfo(type, code) {
+  return (specCategories[type] || []).find(c => c.code === code);
+}
+
+function renderSpecCategoryReference() {
+  const el = document.getElementById('specCategoryReference');
+  if (!el) return;
+  let html = '';
+  ['RES'].forEach(type => {
+    const cats = specCategories[type] || [];
+    if (!cats.length) return;
+    const color = 'var(--accent)';
+    html += `<div style="margin-bottom:12px;">
+      <div style="font-family:var(--mono); font-size:12px; font-weight:700; color:${color}; margin-bottom:8px;">${type}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+    `;
+    cats.forEach(c => {
+      html += `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:6px 12px; font-size:12px;">
+        <span style="font-family:var(--mono); font-weight:700; color:${color};">${c.code}</span>
+        <span style="color:var(--text2); margin-left:6px;">${c.name}</span>
+        ${c.desc ? `<span style="color:var(--text3); font-size:11px; margin-left:4px;">· ${c.desc}</span>` : ''}
+      </div>`;
+    });
+    html += '</div></div>';
+  });
+  el.innerHTML = html || '<div style="color:var(--text3); font-size:13px;">등록된 카테고리가 없습니다.</div>';
+}
+
+function updateSpecCategorySelect() {
+  const typeVal = document.getElementById('specType')?.value;
+  const sel = document.getElementById('specCategory');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— 카테고리 선택 —</option>';
+  if (!typeVal) { sel.innerHTML = '<option value="">— Spec 유형 먼저 선택 —</option>'; return; }
+  const cats = specCategories[typeVal] || [];
+  cats.forEach(c => {
+    sel.innerHTML += `<option value="${c.code}">${c.code} · ${c.name}</option>`;
+  });
+}
+
+function populateSpecCatFilter() {
+  const sel = document.getElementById('specDbCatFilter');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">전체 카테고리</option>';
+  const allCats = new Set();
+  ['RES'].forEach(t => (specCategories[t]||[]).forEach(c => allCats.add(c.code)));
+  [...allCats].sort().forEach(code => {
+    sel.innerHTML += `<option value="${code}">${code}</option>`;
+  });
+  sel.value = current;
+}
+
+// ── Generate ──────────────────────────────────────────────────────────────
+let specPendingPN = null;
+let specPendingData = null;
+
+function onSpecGenChange() {
+  document.getElementById('specConfirmBox').classList.remove('show');
+  document.getElementById('specGenResult').style.display = 'none';
+  specPendingPN = null; specPendingData = null;
+
+  const type = document.getElementById('specType').value;
+  const catCode = document.getElementById('specCategory').value;
+
+  updateSpecCategorySelect();
+
+  // Restore selection after update
+  if (catCode) document.getElementById('specCategory').value = catCode;
+
+  const cat = catCode ? getCatInfo(type, catCode) : null;
+  document.getElementById('specCatDesc').textContent = cat ? `${cat.name}${cat.desc ? ' · ' + cat.desc : ''}` : '';
+
+  if (type) renderSpecCatUsage(type);
+}
+
+function getNextSpecSerial(type, catCode) {
+  const used = new Set(
+    specParts
+      .filter(p => p.spec_type === type && p.category_code === catCode)
+      .map(p => p.serial)
+  );
+  for (let i = 1; i <= 999; i++) {
+    if (!used.has(i)) return i;
+  }
+  return null;
+}
+
+function generateSpecNumber() {
+  const type = document.getElementById('specType').value;
+  const catCode = document.getElementById('specCategory').value;
+  const name = document.getElementById('specName').value.trim();
+  const note = document.getElementById('specNote').value.trim();
+
+  if (!type) { showNotif('Spec 유형을 선택해주세요.', 'error'); return; }
+  if (!catCode) { showNotif('카테고리를 선택해주세요.', 'error'); return; }
+  if (!name) { showNotif('Spec 명칭을 입력해주세요.', 'error'); return; }
+
+  const nextSerial = getNextSpecSerial(type, catCode);
+  if (nextSerial === null) {
+    showNotif('이 카테고리의 번호가 모두 소진되었습니다.', 'error'); return;
+  }
+
+  const serialStr = String(nextSerial).padStart(3, '0');
+  const pn = `${type}-${catCode}-${serialStr}`;
+  const cat = getCatInfo(type, catCode);
+
+  specPendingPN = pn;
+  specPendingData = { part_number: pn, spec_type: type, category_code: catCode,
+    category_name: cat ? cat.name : catCode, serial: nextSerial, name, note: note || '' };
+
+  const resEl = document.getElementById('specGenResult');
+  resEl.style.display = 'flex';
+  document.getElementById('specGenResultInner').innerHTML = `
+    <div style="width:100%">
+      <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); margin-bottom:6px;">생성된 Spec 품번</div>
+      <div class="new-pn-display">${pn}</div>
+      <div class="result-meta" style="margin-top:4px;">
+        <span class="tag ${type==='RES'?'tag-spec-res':'tag-spec-rms'}">${type}</span>
+        <span class="tag tag-spec-cat">${catCode} · ${cat ? cat.name : ''}</span>
+        <span class="tag tag-spec-serial">${serialStr}</span>
+        <span class="tag tag-new">NEW</span>
+      </div>
+      <div style="margin-top:10px; font-size:13px; color:var(--text2);">명칭: <span style="color:var(--text)">${name}</span></div>
+      ${note ? `<div style="font-size:12px; color:var(--text3); margin-top:4px;">비고: ${note}</div>` : ''}
+    </div>
+  `;
+
+  const cb = document.getElementById('specConfirmBox');
+  cb.classList.add('show');
+  document.getElementById('specConfirmPN').textContent = pn;
+  document.getElementById('specConfirmType').textContent = type === 'RES' ? 'Robot Engineering Standard' : 'Robot Material Standard';
+  document.getElementById('specConfirmCat').textContent = `${catCode} · ${cat ? cat.name : ''}`;
+  document.getElementById('specConfirmName').textContent = name;
+  document.getElementById('specConfirmNote').textContent = note || '—';
+}
+
+async function confirmSpecRegister() {
+  if (!specPendingPN || !specPendingData) return;
+  if (specParts.find(p => p.part_number === specPendingPN)) {
+    showNotif('이미 등록된 품번입니다.', 'error');
+    cancelSpecRegister(); return;
+  }
+  specPendingData.registered_at = new Date().toISOString();
+  specParts.push(specPendingData);
+  await saveSpecParts();
+  updateSpecStats();
+  showNotif(`✓ ${specPendingPN} 등록 완료`, 'success');
+
+  document.getElementById('specType').value = '';
+  document.getElementById('specCategory').innerHTML = '<option value="">— Spec 유형 먼저 선택 —</option>';
+  document.getElementById('specName').value = '';
+  document.getElementById('specNote').value = '';
+  document.getElementById('specGenResult').style.display = 'none';
+  document.getElementById('specConfirmBox').classList.remove('show');
+  document.getElementById('specCatDesc').textContent = '';
+  document.getElementById('specCatUsageArea').innerHTML = '<div style="color:var(--text3); font-size:13px; font-family:var(--mono);">Spec 유형을 선택하면 카테고리 현황을 확인할 수 있습니다.</div>';
+  specPendingPN = null; specPendingData = null;
+}
+
+function cancelSpecRegister() {
+  document.getElementById('specConfirmBox').classList.remove('show');
+  document.getElementById('specGenResult').style.display = 'none';
+  specPendingPN = null; specPendingData = null;
+}
+
+// ── Category usage ────────────────────────────────────────────────────────
+function renderSpecCatUsage(type) {
+  const el = document.getElementById('specCatUsageArea');
+  const cats = specCategories[type] || [];
+  if (!cats.length) {
+    el.innerHTML = '<div style="color:var(--text3); font-size:13px; font-family:var(--mono);">카테고리가 없습니다. 관리자 탭에서 추가하세요.</div>';
+    return;
+  }
+  const color = type === 'RES' ? 'var(--accent)' : 'var(--yellow)';
+  let html = '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
+  cats.forEach(c => {
+    const count = specParts.filter(p => p.spec_type === type && p.category_code === c.code).length;
+    html += `
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 14px; min-width:100px; cursor:pointer;"
+           onclick="document.getElementById('specCategory').value='${c.code}'; onSpecGenChange();"
+           title="클릭하여 선택">
+        <div style="font-family:var(--mono); font-size:15px; font-weight:700; color:${color};">${c.code}</div>
+        <div style="font-size:11px; color:var(--text2); margin-top:2px;">${c.name}</div>
+        <div style="font-size:11px; color:var(--text3); margin-top:2px;">${count}개 등록</div>
+      </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ── Search ────────────────────────────────────────────────────────────────
+function onSpecSearchInput(val) {
+  if (val.trim().length >= 10) doSpecSearch();
+}
+
+function doSpecSearch() {
+  const raw = document.getElementById('specSearchInput').value.trim().toUpperCase();
+  const el = document.getElementById('specSearchResult');
+  if (!raw) { el.className='result'; el.innerHTML='<span class="empty-state">Spec 품번을 입력하고 조회 버튼을 누르세요</span>'; return; }
+
+  const found = specParts.find(p => p.part_number === raw);
+  if (found) {
+    const cat = getCatInfo(found.spec_type, found.category_code);
+    const typeColor = found.spec_type === 'RES' ? 'tag-spec-res' : 'tag-spec-rms';
+    el.className = 'result found';
+    el.innerHTML = `
+      <div class="result-inner">
+        <div class="result-pn">${found.part_number}</div>
+        <div class="result-name">${found.name}</div>
+        <div class="result-meta">
+          <span class="tag ${typeColor}">${found.spec_type}</span>
+          <span class="tag tag-spec-cat">${found.category_code} · ${cat ? cat.name : ''}</span>
+          <span class="tag tag-spec-serial">${String(found.serial).padStart(3,'0')}</span>
+          <span class="tag tag-new">SPEC</span>
+        </div>
+        ${found.note ? `<div style="margin-top:8px; font-size:12px; color:var(--text3);">비고: ${found.note}</div>` : ''}
+      </div>`;
+    return;
+  }
+  el.className = 'result not-found';
+  el.innerHTML = `<div class="result-inner">
+    <div style="color:var(--red); font-family:var(--mono); font-size:14px; font-weight:600; margin-bottom:4px;">✗ &nbsp;등록되지 않은 Spec 품번</div>
+    <div style="color:var(--text3); font-size:13px;"><span style="font-family:var(--mono); color:var(--text2);">${raw}</span> 은(는) 데이터베이스에 존재하지 않습니다.</div>
+  </div>`;
+}
+
+// ── DB view ───────────────────────────────────────────────────────────────
+function renderSpecDB() {
+  const search = (document.getElementById('specDbSearch')?.value || '').toLowerCase();
+  const typeFilter = document.getElementById('specDbTypeFilter')?.value || '';
+  const catFilter = document.getElementById('specDbCatFilter')?.value || '';
+
+  let filtered = specParts.filter(p => {
+    if (typeFilter && p.spec_type !== typeFilter) return false;
+    if (catFilter && p.category_code !== catFilter) return false;
+    if (search && !p.part_number.toLowerCase().includes(search) && !p.name.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  const countEl = document.getElementById('specDbCount');
+  if (countEl) countEl.textContent = `${filtered.length}개 항목 (전체 ${specParts.length}개)`;
+
+  const wrap = document.getElementById('specDbTableWrap');
+  if (!wrap) return;
+
+  if (specParts.length === 0) {
+    wrap.innerHTML = `<div class="empty-db">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <div>아직 등록된 Spec 품번이 없습니다</div></div>`;
+    return;
+  }
+  if (filtered.length === 0) {
+    wrap.innerHTML = '<div style="text-align:center; padding:32px; color:var(--text3); font-family:var(--mono); font-size:13px;">검색 결과가 없습니다</div>';
+    return;
+  }
+
+  const sorted = [...filtered].sort((a,b) => new Date(b.registered_at) - new Date(a.registered_at));
+  let html = `<table class="db-table"><thead><tr>
+    <th>Spec 품번</th><th>명칭</th><th>유형</th><th>카테고리</th><th>번호</th><th>비고</th><th>등록일시</th>
+  </tr></thead><tbody>`;
+
+  sorted.forEach(p => {
+    const cat = getCatInfo(p.spec_type, p.category_code);
+    const dateStr = p.registered_at ? new Date(p.registered_at).toLocaleString('ko-KR', {
+      year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'
+    }) : '—';
+    const typeTag = p.spec_type === 'RES' ? 'tag-spec-res' : 'tag-spec-rms';
+    html += `<tr>
+      <td class="pn-cell">${p.part_number}</td>
+      <td class="name-cell">${p.name}</td>
+      <td><span class="tag ${typeTag}">${p.spec_type}</span></td>
+      <td><span class="tag tag-spec-cat">${p.category_code}${cat ? ' · ' + cat.name : ''}</span></td>
+      <td><span class="tag tag-spec-serial">${String(p.serial).padStart(3,'0')}</span></td>
+      <td style="font-size:12px; color:var(--text3);">${p.note || '—'}</td>
+      <td class="date-cell">${dateStr}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// ── Init patch ────────────────────────────────────────────────────────────
+
+// =============================================
+// INIT
+// =============================================
+(async function init() {
+  await loadNewParts();
+  await loadSpecData();
+  document.getElementById('totalParts').textContent = (Object.keys(FLAT_DB).length + newParts.length).toLocaleString();
+  
+  // Auto-format search input
+  document.getElementById('searchInput').addEventListener('blur', function() {
+    if (this.value) this.value = normalizePN(this.value);
+  });
+})();
+</script>
+</body>
+</html>

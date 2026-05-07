@@ -1,0 +1,3696 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FMEA 기능 분석 도구</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --font-ui: 'IBM Plex Sans KR', 'Malgun Gothic', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --bg:       #F7F6F3;
+  --bg2:      #EEECEA;
+  --bg3:      #E4E2DE;
+  --surface:  #FFFFFF;
+  --border:   rgba(0,0,0,.10);
+  --border2:  rgba(0,0,0,.16);
+  --text:     #1C1B19;
+  --text2:    #5C5A56;
+  --text3:    #9A9894;
+  --teal:     #0F6E56;
+  --teal2:    #1D9E75;
+  --teal-bg:  #E1F5EE;
+  --blue:     #185FA5;
+  --blue2:    #378ADD;
+  --blue-bg:  #E6F1FB;
+  --purple:   #3C3489;
+  --purple2:  #7F77DD;
+  --purple-bg:#EEEDFE;
+  --red:      #A32D2D;
+  --red2:     #E24B4A;
+  --red-bg:   #FCEBEB;
+  --amber:    #633806;
+  --amber2:   #EF9F27;
+  --amber-bg: #FAEEDA;
+  --shadow:   0 1px 3px rgba(0,0,0,.08), 0 0 0 .5px rgba(0,0,0,.06);
+}
+
+[data-theme="dark"] {
+  --bg:       #141412;
+  --bg2:      #1E1D1A;
+  --bg3:      #2A2926;
+  --surface:  #232220;
+  --border:   rgba(255,255,255,.10);
+  --border2:  rgba(255,255,255,.18);
+  --text:     #E8E6E1;
+  --text2:    #A8A6A0;
+  --text3:    #6A6864;
+  --teal:     #5DCAA5;
+  --teal2:    #9FE1CB;
+  --teal-bg:  #04342C;
+  --blue:     #85B7EB;
+  --blue2:    #B5D4F4;
+  --blue-bg:  #042C53;
+  --purple:   #AFA9EC;
+  --purple2:  #CECBF6;
+  --purple-bg:#26215C;
+  --red:      #F09595;
+  --red2:     #F7C1C1;
+  --red-bg:   #501313;
+  --amber:    #FAC775;
+  --amber2:   #EF9F27;
+  --amber-bg: #412402;
+  --shadow:   0 1px 3px rgba(0,0,0,.3), 0 0 0 .5px rgba(255,255,255,.04);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; overflow:hidden; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ── */
+#app { display:flex; flex-direction:column; height:100vh; }
+
+header {
+  display:flex; align-items:center; gap:12px;
+  padding:0 16px; height:48px;
+  background:var(--surface);
+  border-bottom:.5px solid var(--border2);
+  flex-shrink:0; z-index:10;
+}
+.logo {
+  display:flex; align-items:center; gap:8px;
+  font-size:14px; font-weight:600; color:var(--text);
+  letter-spacing:-.02em;
+}
+.logo-mark {
+  width:26px; height:26px; border-radius:6px;
+  background:var(--teal2); display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; color:#fff; font-family:var(--font-mono);
+}
+.header-tabs {
+  display:flex; gap:2px; margin-left:8px;
+  background:var(--bg2); border-radius:8px; padding:3px;
+}
+.htab {
+  padding:4px 12px; border:none; background:none; cursor:pointer;
+  font:inherit; font-size:12px; color:var(--text2); border-radius:6px;
+  transition:all .15s; white-space:nowrap;
+}
+.htab:hover { color:var(--text); background:var(--bg3); }
+.htab.active { background:var(--surface); color:var(--teal); font-weight:500; box-shadow:var(--shadow); }
+.header-spacer { flex:1; }
+.theme-btn {
+  width:32px; height:32px; border:none; background:var(--bg2);
+  border-radius:8px; cursor:pointer; color:var(--text2); font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s;
+}
+.theme-btn:hover { background:var(--bg3); color:var(--text); }
+
+.main { flex:1; display:flex; overflow:hidden; }
+
+/* ── Left sidebar (parts tree) ── */
+#sidebar {
+  width:220px; min-width:220px;
+  background:var(--surface);
+  border-right:.5px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+.sidebar-header {
+  padding:10px 12px 8px;
+  font-size:10px; font-weight:600; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.06em;
+  border-bottom:.5px solid var(--border); flex-shrink:0;
+}
+#part-tree { flex:1; overflow-y:auto; padding:4px 0; }
+.tree-node {
+  display:flex; align-items:center; gap:6px;
+  padding:5px 10px; cursor:pointer; user-select:none;
+  border-left:2px solid transparent;
+  transition:all .12s; position:relative;
+}
+.tree-node:hover { background:var(--bg2); }
+.tree-node.active { background:var(--teal-bg); border-left-color:var(--teal2); }
+.tree-node.active .tn-label { color:var(--teal); font-weight:500; }
+.tn-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.tn-label { font-size:12px; color:var(--text); }
+.tn-count {
+  margin-left:auto; font-size:10px; color:var(--text3);
+  background:var(--bg2); padding:1px 5px; border-radius:99px;
+}
+.tree-node.active .tn-count { background:var(--teal2); color:#fff; }
+.tree-dim {
+  padding:3px 10px 3px 24px; cursor:pointer;
+  font-size:10px; color:var(--text3);
+  transition:all .12s;
+}
+.tree-dim:hover { color:var(--text2); }
+
+/* ── Right content area ── */
+#content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── Canvas panel (cause-effect tree) ── */
+#canvas-panel { flex:1; position:relative; overflow:hidden; }
+canvas { display:block; }
+
+/* ── Detail panel ── */
+#detail-panel {
+  height:200px; flex-shrink:0;
+  background:var(--surface); border-top:.5px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.detail-tabs {
+  display:flex; gap:0; border-bottom:.5px solid var(--border);
+  padding:0 12px; flex-shrink:0;
+}
+.dtab {
+  padding:7px 12px; border:none; background:none; cursor:pointer;
+  font:inherit; font-size:11px; color:var(--text2);
+  border-bottom:2px solid transparent; transition:all .13s;
+  white-space:nowrap;
+}
+.dtab:hover { color:var(--text); }
+.dtab.active { color:var(--teal); border-bottom-color:var(--teal2); font-weight:500; }
+#detail-content { flex:1; overflow-y:auto; padding:10px 14px; }
+
+/* ── Lookup panel (full panel tabs) ── */
+.lookup-panel { flex:1; display:none; flex-direction:column; overflow:hidden; padding:16px; }
+.lookup-panel.active { display:flex; }
+.lp-search { display:flex; gap:8px; margin-bottom:14px; }
+.lp-search select, .lp-search input { height:34px; font:inherit; font-size:12px; flex:1; }
+.lp-search button {
+  height:34px; padding:0 14px; font:inherit; font-size:12px;
+  background:var(--teal2); color:#fff; border:none; border-radius:6px;
+  cursor:pointer; white-space:nowrap;
+}
+.lp-search button:hover { background:var(--teal); }
+.info-card {
+  background:var(--bg2); border-radius:8px; padding:12px 14px; margin-bottom:12px;
+}
+.info-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px;
+}
+.info-item { display:flex; flex-direction:column; gap:2px; }
+.info-lbl { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+.info-val { font-size:12px; font-weight:500; }
+.spec-val { font-family:var(--font-mono); font-size:12px; color:var(--teal); font-weight:500; }
+.result-table { width:100%; border-collapse:collapse; font-size:12px; }
+.result-table th {
+  padding:6px 10px; text-align:left;
+  background:var(--bg2); border-bottom:.5px solid var(--border);
+  font-weight:500; color:var(--text2); white-space:nowrap; font-size:11px;
+}
+.result-table td {
+  padding:6px 10px; border-bottom:.5px solid var(--border);
+  vertical-align:middle;
+}
+.result-table tr:last-child td { border-bottom:none; }
+.result-table tbody tr:hover td { background:var(--bg2); }
+.section-label {
+  font-size:10px; font-weight:600; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.06em;
+  margin:12px 0 6px;
+}
+.empty { text-align:center; padding:40px; color:var(--text3); font-size:13px; }
+.chip {
+  display:inline-flex; align-items:center; padding:2px 7px;
+  border-radius:99px; font-size:10px; font-weight:500;
+  white-space:nowrap; cursor:pointer; transition:all .12s;
+}
+.chip-dim { background:var(--teal-bg); color:var(--teal); border:.5px solid var(--teal2); }
+.chip-dim:hover { background:var(--teal2); color:#fff; }
+.chip-cr  { background:var(--purple-bg); color:var(--purple); border:.5px solid var(--purple2); }
+.chip-cr:hover { background:var(--purple2); color:#fff; }
+.chip-fm  { background:var(--red-bg); color:var(--red); border:.5px solid var(--red2); }
+.chip-fm:hover { background:var(--red2); color:#fff; }
+.badge {
+  display:inline-flex; align-items:center; padding:2px 6px;
+  border-radius:99px; font-size:10px; font-weight:500; white-space:nowrap;
+}
+.b-필수 { background:var(--red-bg); color:var(--red); }
+.b-중요 { background:var(--amber-bg); color:var(--amber); }
+.b-보통 { background:var(--bg3); color:var(--text2); }
+.sev-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:4px; font-size:11px; font-weight:600;
+  font-family:var(--font-mono);
+}
+.sev-hi { background:var(--red-bg); color:var(--red); }
+.sev-md { background:var(--amber-bg); color:var(--amber); }
+.sev-lo { background:var(--teal-bg); color:var(--teal); }
+
+/* ── DB Management ── */
+.db-panel { flex:1; display:none; flex-direction:column; overflow:hidden; }
+.db-panel.active { display:flex; }
+.db-subtabs {
+  display:flex; gap:4px; padding:12px 16px 0; flex-shrink:0;
+  border-bottom:.5px solid var(--border);
+}
+.dstab {
+  padding:6px 14px; border:none; background:none; cursor:pointer;
+  font:inherit; font-size:12px; color:var(--text2);
+  border-bottom:2px solid transparent; transition:all .13s;
+}
+.dstab:hover { color:var(--text); }
+.dstab.active { color:var(--teal); border-bottom-color:var(--teal2); font-weight:500; }
+.db-sub-content { flex:1; overflow-y:auto; padding:14px 16px; }
+.add-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 14px; font:inherit; font-size:12px;
+  background:none; border:.5px solid var(--teal2); color:var(--teal);
+  border-radius:6px; cursor:pointer; margin-bottom:12px;
+}
+.add-btn:hover { background:var(--teal-bg); }
+.form-card {
+  background:var(--surface); border:.5px solid var(--border);
+  border-radius:8px; padding:14px; margin-bottom:12px;
+}
+.fg { display:flex; flex-direction:column; gap:3px; }
+.fg label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+.fg input, .fg select, .fg textarea {
+  font:inherit; font-size:12px; padding:6px 8px;
+  background:var(--bg2); border:.5px solid var(--border);
+  border-radius:6px; color:var(--text); outline:none;
+  transition:border-color .13s;
+}
+.fg input:focus, .fg select:focus, .fg textarea:focus {
+  border-color:var(--teal2);
+}
+.fg textarea { height:52px; resize:none; }
+.fgrid { display:grid; gap:8px; margin-bottom:8px; }
+.g2 { grid-template-columns:1fr 1fr; }
+.g3 { grid-template-columns:1fr 1fr 1fr; }
+.g4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+.ro { opacity:.7; cursor:default !important; }
+.form-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+.btn-save {
+  padding:6px 16px; font:inherit; font-size:12px;
+  background:var(--teal2); color:#fff; border:none; border-radius:6px; cursor:pointer;
+}
+.btn-save:hover { background:var(--teal); }
+.btn-cancel {
+  padding:6px 16px; font:inherit; font-size:12px;
+  background:none; border:.5px solid var(--border2); border-radius:6px; cursor:pointer;
+  color:var(--text2);
+}
+.btn-cancel:hover { background:var(--bg2); }
+.del-btn {
+  background:none; border:none; color:var(--red2); cursor:pointer;
+  font-size:12px; padding:2px 5px; border-radius:4px; opacity:.5;
+}
+.del-btn:hover { opacity:1; background:var(--red-bg); }
+.edit-btn {
+  background:none; border:none; color:var(--blue2); cursor:pointer;
+  font-size:12px; padding:2px 5px; border-radius:4px; opacity:.5;
+}
+.edit-btn:hover { opacity:1; background:var(--blue-bg); }
+.row-edit-form {
+  background:var(--bg2); border-top:.5px solid var(--border);
+  border-bottom:.5px solid var(--border);
+}
+.row-edit-form td { padding:10px 10px 12px; }
+.inline-input {
+  font:inherit; font-size:12px; padding:4px 7px;
+  background:var(--surface); border:.5px solid var(--border2);
+  border-radius:5px; color:var(--text); outline:none; width:100%;
+}
+.inline-input:focus { border-color:var(--teal2); }
+.inline-select {
+  font:inherit; font-size:12px; padding:4px 7px;
+  background:var(--surface); border:.5px solid var(--border2);
+  border-radius:5px; color:var(--text); outline:none; width:100%;
+}
+.btn-update {
+  padding:4px 12px; font:inherit; font-size:11px;
+  background:var(--blue2); color:#fff; border:none; border-radius:5px; cursor:pointer;
+}
+.btn-update:hover { background:var(--blue); }
+.btn-editcancel {
+  padding:4px 10px; font:inherit; font-size:11px;
+  background:none; border:.5px solid var(--border2); border-radius:5px; cursor:pointer; color:var(--text2);
+}
+.btn-editcancel:hover { background:var(--bg3); }
+.stat-row {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px;
+}
+.stat-box { background:var(--bg2); border-radius:8px; padding:10px; text-align:center; }
+.stat-n { font-size:22px; font-weight:600; font-family:var(--font-mono); margin-bottom:2px; }
+.stat-l { font-size:10px; color:var(--text3); }
+
+
+
+/* ── Cause & Effect Tree (HTML 기반) ── */
+#ce-toolbar {
+  display:flex; align-items:center; gap:10px; padding:6px 12px;
+  background:var(--surface); border-bottom:.5px solid var(--border);
+  flex-shrink:0;
+}
+#ce-toolbar input, #ce-toolbar select {
+  font:inherit; padding:4px 8px; background:var(--bg2);
+  border:.5px solid var(--border2); border-radius:5px; color:var(--text);
+  outline:none;
+}
+#ce-toolbar input:focus { border-color:var(--teal2); }
+#ce-stat { font-size:11px; color:var(--text3); }
+#ce-body {
+  flex:1; overflow:auto; position:relative;
+}
+#ce-cols {
+  position:sticky; top:0; z-index:10;
+  background:var(--surface); border-bottom:.5px solid var(--border2);
+  height:28px; display:flex;
+}
+.ce-col-hdr {
+  position:absolute; top:0; height:28px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:500; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.05em;
+  border-right:.5px solid var(--border);
+}
+.ce-col-hdr:last-child { border-right:none; }
+#ce-content {
+  padding:10px 0 20px;
+  min-width:740px;
+}
+
+/* part section */
+.ce-part-section { margin-bottom:6px; }
+.ce-part-label {
+  display:flex; align-items:center; gap:7px;
+  padding:5px 10px; font-size:11px; font-weight:500;
+  color:var(--text2); cursor:pointer; user-select:none;
+  border-bottom:.5px solid var(--border);
+  position:sticky; top:28px; z-index:5; background:var(--bg2);
+}
+.ce-part-label:hover { background:var(--bg3); }
+.ce-part-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ce-part-arrow { font-size:9px; color:var(--text3); transition:transform .15s; }
+.ce-part-arrow.open { transform:rotate(90deg); }
+.ce-part-cnt { font-size:9px; color:var(--text3); background:var(--bg3); padding:1px 6px; border-radius:99px; }
+
+/* row */
+.ce-row {
+  display:flex; align-items:stretch; min-height:38px;
+  border-bottom:.5px solid var(--border); position:relative;
+}
+.ce-row:hover { background:var(--bg2); }
+.ce-row.highlighted { background:var(--teal-bg); }
+
+/* cells */
+.ce-cell {
+  flex-shrink:0; padding:5px 8px;
+  display:flex; align-items:center;
+  border-right:.5px solid var(--border);
+  position:relative;
+}
+.ce-cell:last-child { border-right:none; }
+.ce-cell-dim   { width:160px; flex-direction:column; align-items:flex-start; gap:2px; }
+.ce-cell-func  { width:180px; }
+.ce-cell-cr    { width:200px; flex-direction:column; align-items:flex-start; gap:2px; }
+.ce-cell-fm    { width:160px; }
+
+/* dim cell content */
+.ce-dim-id   { font-size:9px; font-family:var(--font-mono); color:var(--teal); background:var(--teal-bg); padding:1px 5px; border-radius:3px; }
+.ce-dim-name { font-size:11px; font-weight:500; }
+.ce-dim-spec { font-size:9px; font-family:var(--font-mono); color:var(--text3); }
+
+/* func cell */
+.ce-func-box {
+  width:100%; padding:4px 7px; border-radius:4px; cursor:pointer;
+  transition:background .12s; font-size:11px;
+}
+.ce-func-box:hover { background:var(--blue-bg); }
+.ce-func-name { font-weight:500; font-size:11px; line-height:1.4; }
+.ce-func-type { font-size:9px; color:var(--text3); }
+
+/* cr cell */
+.ce-cr-id   { font-size:9px; font-family:var(--font-mono); color:var(--purple); background:var(--purple-bg); padding:1px 5px; border-radius:3px; cursor:pointer; }
+.ce-cr-desc { font-size:10px; color:var(--text2); line-height:1.35; }
+.ce-cr-imp  { font-size:9px; }
+
+/* fm cell */
+.ce-fm-box {
+  width:100%; padding:4px 7px; border-radius:4px; cursor:pointer;
+  font-size:11px; transition:background .12s;
+}
+.ce-fm-box:hover { background:var(--red-bg); }
+.ce-fm-id   { font-size:9px; font-family:var(--font-mono); color:var(--red); }
+.ce-fm-name { font-weight:500; font-size:11px; }
+.ce-fm-sev  { font-size:9px; }
+
+/* connector line between cells */
+.ce-connector {
+  position:absolute; top:50%; width:10px; height:1px;
+  background:var(--border2); pointer-events:none;
+}
+
+/* empty state */
+.ce-empty {
+  padding:60px 20px; text-align:center; color:var(--text3); font-size:13px;
+}
+
+/* highlight for search */
+.ce-highlight { background:rgba(239,159,39,.25); border-radius:2px; }
+
+
+/* ── 제품 선택기 ── */
+#product-selector {
+  display:flex; align-items:center; gap:6px;
+  padding:0 10px; border-right:.5px solid var(--border);
+  margin-right:4px; flex-shrink:0;
+}
+#product-name-display {
+  font-size:12px; font-weight:500; color:var(--text);
+  max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  cursor:pointer; padding:3px 7px;
+  border:.5px solid var(--border2); border-radius:5px;
+  background:var(--bg2); transition:all .12s;
+}
+#product-name-display:hover { background:var(--bg3); border-color:var(--teal2); }
+.prod-badge {
+  font-size:9px; font-weight:600; padding:2px 6px; border-radius:3px;
+  background:var(--teal2); color:#fff; white-space:nowrap;
+}
+
+/* ── 제품 관리 모달 ── */
+#product-modal-bg {
+  display:none; position:fixed; inset:0; z-index:1000;
+  background:rgba(0,0,0,.45);
+}
+#product-modal-bg.open { display:flex; align-items:center; justify-content:center; }
+#product-modal {
+  background:var(--surface); border-radius:var(--border-radius-lg);
+  border:.5px solid var(--border2); width:520px; max-height:80vh;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#product-modal-header {
+  display:flex; align-items:center; padding:14px 18px;
+  border-bottom:.5px solid var(--border); flex-shrink:0;
+}
+#product-modal-header h2 { font-size:14px; font-weight:500; flex:1; }
+.pm-close { background:none; border:none; cursor:pointer; color:var(--text3); font-size:18px; }
+#product-modal-body { overflow-y:auto; padding:14px 18px; flex:1; }
+#product-modal-footer {
+  padding:12px 18px; border-top:.5px solid var(--border);
+  display:flex; gap:8px; flex-shrink:0;
+}
+
+.prod-item {
+  display:flex; align-items:center; gap:8px; padding:9px 10px;
+  border:.5px solid var(--border); border-radius:8px; margin-bottom:6px;
+  cursor:pointer; transition:all .13s;
+}
+.prod-item:hover { background:var(--bg2); }
+.prod-item.active { border-color:var(--teal2); background:var(--teal-bg); }
+.prod-item-icon {
+  width:32px; height:32px; border-radius:6px; display:flex; align-items:center;
+  justify-content:center; font-size:11px; font-weight:600; color:#fff; flex-shrink:0;
+}
+.prod-item-info { flex:1; min-width:0; }
+.prod-item-name { font-size:12px; font-weight:500; }
+.prod-item-meta { font-size:10px; color:var(--text3); margin-top:1px; }
+.prod-item-actions { display:flex; gap:4px; flex-shrink:0; }
+.prod-act-btn {
+  background:none; border:.5px solid var(--border2); border-radius:4px;
+  padding:3px 7px; font-size:10px; cursor:pointer; color:var(--text2);
+  transition:all .12s;
+}
+.prod-act-btn:hover { background:var(--bg3); }
+.prod-act-btn.danger:hover { background:var(--red-bg); color:var(--red); border-color:var(--red2); }
+
+/* 새 제품 추가 폼 */
+#add-prod-form { 
+  background:var(--bg2); border-radius:8px; padding:12px; margin-top:8px;
+  border:.5px solid var(--border);
+}
+.pm-fg { display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
+.pm-fg label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+.pm-fg input, .pm-fg select, .pm-fg textarea {
+  font:inherit; font-size:12px; padding:6px 9px;
+  background:var(--surface); border:.5px solid var(--border2);
+  border-radius:5px; color:var(--text); outline:none;
+}
+.pm-fg input:focus, .pm-fg select:focus { border-color:var(--teal2); }
+.pm-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.pm-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+.btn-pm-save { padding:6px 16px; font:inherit; font-size:12px; background:var(--teal2); color:#fff; border:none; border-radius:5px; cursor:pointer; }
+.btn-pm-save:hover { background:var(--teal); }
+.btn-pm-cancel { padding:6px 12px; font:inherit; font-size:12px; background:none; border:.5px solid var(--border2); border-radius:5px; cursor:pointer; color:var(--text2); }
+
+/* 색상 팔레트 */
+.color-palette { display:flex; gap:6px; flex-wrap:wrap; }
+.color-swatch {
+  width:22px; height:22px; border-radius:4px; cursor:pointer;
+  border:2px solid transparent; transition:all .12s;
+}
+.color-swatch.selected { border-color:var(--text); transform:scale(1.1); }
+
+
+/* ── RPN / Occurrence / Detection ── */
+.rpn-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:36px; height:22px; border-radius:4px;
+  font-size:11px; font-weight:600; font-family:var(--font-mono);
+  padding:0 5px;
+}
+.rpn-hi  { background:#FCEBEB; color:#A32D2D; }
+.rpn-md  { background:#FAEEDA; color:#633806; }
+.rpn-lo  { background:#E1F5EE; color:#0F6E56; }
+.rpn-na  { background:var(--bg3); color:var(--text3); }
+
+.occ-det-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:3px;
+  font-size:10px; font-weight:500; font-family:var(--font-mono);
+}
+.od-hi { background:#FCE4D6; color:#993C1D; }
+.od-md { background:#FFF2CC; color:#633806; }
+.od-lo { background:#E2EFDA; color:#375623; }
+
+/* RPN 컬럼 */
+.ce-cell-rpn  { width:120px; flex-direction:column; align-items:flex-start; gap:3px; }
+.ce-rpn-row   { display:flex; align-items:center; gap:5px; font-size:10px; }
+.ce-rpn-label { color:var(--text3); width:28px; flex-shrink:0; }
+
+/* FMEA 전체 뷰 탭 */
+#tab-fmea { flex:1; display:none; flex-direction:column; overflow:hidden; }
+#tab-fmea.active { display:flex; }
+#fmea-toolbar {
+  display:flex; align-items:center; gap:10px; padding:6px 12px;
+  background:var(--surface); border-bottom:.5px solid var(--border); flex-shrink:0;
+}
+#fmea-toolbar input, #fmea-toolbar select {
+  font:inherit; font-size:11px; padding:4px 8px;
+  background:var(--bg2); border:.5px solid var(--border2);
+  border-radius:5px; color:var(--text); outline:none; height:28px;
+}
+#fmea-toolbar input:focus { border-color:var(--teal2); }
+#fmea-body { flex:1; overflow:auto; }
+
+/* FMEA 테이블 */
+.fmea-table { width:100%; border-collapse:collapse; font-size:11px; min-width:1400px; }
+.fmea-table th {
+  padding:6px 8px; text-align:center; font-size:10px; font-weight:500;
+  color:var(--text3); white-space:nowrap; border-bottom:.5px solid var(--border2);
+  border-right:.5px solid var(--border); position:sticky; top:0; z-index:5;
+  background:var(--surface);
+}
+.fmea-table td {
+  padding:5px 8px; border-bottom:.5px solid var(--border);
+  border-right:.5px solid var(--border); vertical-align:middle;
+}
+.fmea-table tr:hover td { background:var(--bg2); }
+.fmea-table th:last-child, .fmea-table td:last-child { border-right:none; }
+
+/* 열 그룹 헤더 */
+.fmea-grp-hdr {
+  padding:4px 8px; text-align:center; font-size:10px; font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; color:#fff;
+  border-right:.5px solid rgba(255,255,255,.3);
+}
+.grp-dim    { background:#185FA5; }
+.grp-func   { background:#1D9E75; }
+.grp-fm     { background:#A32D2D; }
+.grp-rpn    { background:#633806; }
+.grp-action { background:#534AB7; }
+
+/* 인라인 편집 (숫자 입력) */
+.num-input {
+  width:46px; font:inherit; font-size:11px; text-align:center;
+  padding:2px 4px; background:var(--bg2); border:.5px solid var(--border2);
+  border-radius:4px; color:var(--text); outline:none;
+}
+.num-input:focus { border-color:var(--teal2); }
+.action-input {
+  width:100%; font:inherit; font-size:11px;
+  padding:3px 6px; background:var(--bg2); border:.5px solid var(--border2);
+  border-radius:4px; color:var(--text); outline:none; min-width:120px;
+}
+.action-input:focus { border-color:var(--teal2); }
+.inline-save-btn {
+  padding:2px 8px; font:inherit; font-size:10px;
+  background:var(--teal2); color:#fff; border:none; border-radius:3px; cursor:pointer;
+}
+.inline-save-btn:hover { background:var(--teal); }
+
+/* ── Function Analysis Structure ── */
+.fas-panel { flex:1; display:none; flex-direction:column; overflow:hidden; }
+.fas-panel.active { display:flex; }
+#fas-toolbar {
+  display:flex; align-items:center; gap:12px; padding:8px 14px;
+  background:var(--surface); border-bottom:.5px solid var(--border);
+  flex-shrink:0;
+}
+#fas-title { font-size:12px; font-weight:500; color:var(--text2); }
+#fas-controls { display:flex; align-items:center; gap:8px; margin-left:auto; }
+.fas-ctrl-btn {
+  padding:4px 10px; font:inherit; font-size:11px;
+  background:none; border:.5px solid var(--border2); border-radius:5px;
+  cursor:pointer; color:var(--text2); transition:all .12s;
+}
+.fas-ctrl-btn:hover { background:var(--bg2); color:var(--text); }
+#fas-filter-part {
+  font:inherit; font-size:11px; padding:4px 8px;
+  background:var(--bg2); border:.5px solid var(--border2);
+  border-radius:5px; color:var(--text);
+}
+#fas-body {
+  flex:1; display:flex; overflow:auto; position:relative; min-height:0;
+}
+#fas-canvas {
+  position:absolute; top:0; left:0; pointer-events:none; z-index:0;
+}
+#fas-left {
+  width:220px; min-width:220px; flex-shrink:0;
+  padding:12px 0; z-index:1; position:relative;
+}
+#fas-right {
+  flex:1; padding:12px 0; z-index:1; position:relative; min-width:0;
+}
+
+/* Part node (left) */
+.fas-part-node {
+  display:flex; align-items:center; gap:6px;
+  padding:5px 10px; cursor:pointer; user-select:none;
+  border-left:2px solid transparent;
+  transition:all .13s; position:relative;
+}
+.fas-part-node:hover { background:var(--bg2); }
+.fas-part-node.active {
+  background:var(--teal-bg); border-left-color:var(--teal2);
+}
+.fas-part-node.active .fpn-label { color:var(--teal); font-weight:500; }
+.fpn-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.fpn-label { font-size:12px; }
+.fpn-arrow {
+  margin-left:auto; font-size:10px; color:var(--text3);
+  transition:transform .15s; flex-shrink:0;
+}
+.fpn-arrow.open { transform:rotate(90deg); }
+
+/* Function group on right */
+.fas-func-group {
+  margin-bottom:2px; position:relative;
+}
+.fas-func-header {
+  display:flex; align-items:center; gap:0;
+  padding:0 12px 0 8px; min-height:32px;
+}
+.fas-dim-tag {
+  font-size:9px; font-family:var(--font-mono);
+  background:var(--teal-bg); color:var(--teal);
+  border:.5px solid var(--teal2); border-radius:3px;
+  padding:1px 5px; flex-shrink:0; white-space:nowrap;
+  margin-right:8px;
+}
+.fas-func-box {
+  flex:1; display:flex; align-items:center; justify-content:space-between;
+  padding:5px 9px; border-radius:5px; cursor:pointer; gap:6px;
+  transition:all .13s; border:.5px solid transparent;
+  min-width:0;
+}
+.fas-func-box:hover { border-color:var(--border2); }
+.fas-func-box.selected {
+  border-color:var(--blue2);
+  background:var(--blue-bg);
+}
+.fas-func-box.editing {
+  border-color:var(--teal2);
+  background:var(--teal-bg);
+}
+.ffb-name {
+  font-size:12px; font-weight:500; flex:1; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ffb-badges { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.ffb-type {
+  font-size:9px; color:var(--text3);
+  background:var(--bg3); border-radius:3px; padding:1px 5px;
+}
+.ffb-imp { font-size:9px; padding:1px 5px; border-radius:3px; }
+
+/* Connector dots */
+.fas-connector-dot {
+  width:6px; height:6px; border-radius:50%;
+  position:absolute; right:-3px; top:50%; transform:translateY(-50%);
+  flex-shrink:0;
+}
+.fas-left-dot {
+  width:6px; height:6px; border-radius:50%;
+  position:absolute; left:-3px; top:50%; transform:translateY(-50%);
+}
+
+/* CR/FM tags on right edge */
+.fas-right-tags {
+  display:flex; flex-direction:column; gap:2px;
+  margin-left:8px; flex-shrink:0;
+}
+.fas-tag {
+  font-size:9px; padding:1px 6px; border-radius:3px; white-space:nowrap;
+  font-family:var(--font-mono);
+}
+.fas-tag-cr { background:var(--purple-bg); color:var(--purple); border:.5px solid var(--purple2); }
+.fas-tag-fm { background:var(--red-bg); color:var(--red); border:.5px solid var(--red2); }
+
+/* Inline edit form */
+.fas-edit-form {
+  margin:4px 8px 4px 60px; padding:10px;
+  background:var(--surface); border:.5px solid var(--teal2);
+  border-radius:6px;
+}
+.fas-edit-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:6px; }
+.fas-edit-grid4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-bottom:6px; }
+.fas-fld label { display:block; font-size:9px; color:var(--text3); margin-bottom:2px; text-transform:uppercase; }
+.fas-fld input, .fas-fld select {
+  font:inherit; font-size:11px; width:100%; padding:4px 7px;
+  background:var(--bg2); border:.5px solid var(--border);
+  border-radius:4px; color:var(--text); outline:none;
+}
+.fas-fld input:focus, .fas-fld select:focus { border-color:var(--teal2); }
+.fas-edit-actions { display:flex; gap:6px; }
+.btn-fas-save {
+  padding:4px 12px; font:inherit; font-size:11px;
+  background:var(--teal2); color:#fff; border:none; border-radius:4px; cursor:pointer;
+}
+.btn-fas-save:hover { background:var(--teal); }
+.btn-fas-del {
+  padding:4px 10px; font:inherit; font-size:11px;
+  background:none; border:.5px solid var(--red2); border-radius:4px;
+  cursor:pointer; color:var(--red);
+}
+.btn-fas-del:hover { background:var(--red-bg); }
+.btn-fas-cancel {
+  padding:4px 10px; font:inherit; font-size:11px;
+  background:none; border:.5px solid var(--border2); border-radius:4px;
+  cursor:pointer; color:var(--text2); margin-left:auto;
+}
+.btn-fas-cancel:hover { background:var(--bg2); }
+
+/* Add function button */
+.fas-add-func-btn {
+  display:flex; align-items:center; gap:5px;
+  padding:4px 10px; margin:2px 8px 2px 60px;
+  font:inherit; font-size:11px; color:var(--text3);
+  background:none; border:.5px dashed var(--border2);
+  border-radius:4px; cursor:pointer; transition:all .12s;
+}
+.fas-add-func-btn:hover { color:var(--teal); border-color:var(--teal2); background:var(--teal-bg); }
+
+/* Part section divider on right */
+.fas-part-section {
+  border-top:.5px solid var(--border); margin-top:4px; padding-top:4px;
+}
+.fas-part-section-label {
+  font-size:10px; font-weight:500; color:var(--text3); padding:2px 12px 4px;
+  display:flex; align-items:center; gap:6px;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--bg3); border-radius:2px; }
+
+/* tooltip */
+#tooltip {
+  position:fixed; pointer-events:none; z-index:100;
+  background:var(--surface); border:.5px solid var(--border2);
+  border-radius:8px; padding:8px 12px; font-size:11px;
+  box-shadow:0 4px 16px rgba(0,0,0,.15);
+  max-width:240px; display:none;
+}
+
+/* notification */
+#notif {
+  position:fixed; top:16px; right:16px; z-index:200;
+  background:var(--teal2); color:#fff; padding:8px 16px;
+  border-radius:8px; font-size:12px; font-weight:500;
+  transform:translateY(-60px); transition:transform .3s ease;
+  pointer-events:none;
+}
+#notif.show { transform:translateY(0); }
+</style>
+</head>
+<body data-theme="light">
+
+<div id="app">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">F</div>
+      FMEA 기능 분석
+    </div>
+    <div id="product-selector">
+      <span class="prod-badge">제품</span>
+      <span id="product-name-display" onclick="openProductModal()" title="제품 전환">DD90</span>
+    </div>
+    <div class="header-tabs">
+      <button class="htab active" onclick="switchTab('tree')">Cause &amp; Effect</button>
+      <button class="htab" onclick="switchTab('fas')">기능 분석 구조도</button>
+      <button class="htab" onclick="switchTab('dim')">치수 ↔ 기능</button>
+      <button class="htab" onclick="switchTab('cr')">CR ↔ 부품</button>
+      <button class="htab" onclick="switchTab('fm')">FM ↔ 부품</button>
+      <button class="htab" onclick="switchTab('db')">DB 관리</button>
+      <button class="htab" onclick="switchTab('fmea')">FMEA 전체</button>
+    </div>
+    <div class="header-spacer"></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-right:6px">
+      <span id="save-status" style="font-size:11px;color:var(--text3)"></span>
+      <button class="theme-btn" onclick="exportJSON()" title="JSON으로 내보내기" style="width:auto;padding:0 10px;font-size:11px;gap:4px;display:flex;align-items:center">↓ 내보내기</button>
+      <label class="theme-btn" style="width:auto;padding:0 10px;font-size:11px;cursor:pointer;display:flex;align-items:center" title="JSON 파일 가져오기">
+        ↑ 가져오기
+        <input type="file" accept=".json" onchange="importJSON(event)" style="display:none">
+      </label>
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()" title="다크모드 전환">◑</button>
+  </header>
+
+  <div class="main">
+    <!-- Sidebar: parts tree (visible in tree + lookup tabs) -->
+    <div id="sidebar">
+      <div class="sidebar-header" style="display:flex;align-items:center;justify-content:space-between">
+        <span>부품 계층 구조</span>
+        <button onclick="togglePartMgr()" title="부품 관리" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1" id="part-mgr-btn">⚙</button>
+      </div>
+      <div id="part-mgr" style="display:none;padding:8px 10px;border-bottom:.5px solid var(--border);background:var(--bg2)">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">부품 관리</div>
+        <div id="part-mgr-list"></div>
+        <button onclick="showAddPartForm()" id="add-part-btn" style="width:100%;margin-top:6px;padding:5px;background:none;border:.5px dashed var(--border2);border-radius:5px;font-size:11px;color:var(--text2);cursor:pointer">+ 부품 추가</button>
+        <div id="add-part-form" style="display:none;margin-top:8px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+            <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">부품 ID *</div><input id="np-id" placeholder="P-008" style="font:inherit;font-size:11px;padding:4px 6px;background:var(--surface);border:.5px solid var(--border2);border-radius:4px;color:var(--text);width:100%"></div>
+            <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">부품명 *</div><input id="np-label" placeholder="스프링" style="font:inherit;font-size:11px;padding:4px 6px;background:var(--surface);border:.5px solid var(--border2);border-radius:4px;color:var(--text);width:100%"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+            <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">레벨</div>
+              <select id="np-lv" style="font:inherit;font-size:11px;padding:4px 6px;background:var(--surface);border:.5px solid var(--border2);border-radius:4px;color:var(--text);width:100%">
+                <option value="1">1 — 시스템</option><option value="2">2 — 어셈블리</option><option value="3" selected>3 — 부품</option>
+              </select></div>
+            <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">색상</div>
+              <select id="np-color" style="font:inherit;font-size:11px;padding:4px 6px;background:var(--surface);border:.5px solid var(--border2);border-radius:4px;color:var(--text);width:100%">
+                <option value="#1D9E75">녹청 (Lv.3)</option><option value="#185FA5">파랑 (Lv.2)</option><option value="#1F3864">남색 (Lv.1)</option><option value="#7F77DD">보라</option><option value="#E24B4A">빨강</option><option value="#EF9F27">주황</option>
+              </select></div>
+          </div>
+          <div style="display:flex;gap:5px">
+            <button onclick="addPart()" style="flex:1;padding:4px;background:var(--teal2);color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">추가</button>
+            <button onclick="cancelAddPart()" style="flex:1;padding:4px;background:none;border:.5px solid var(--border2);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text2)">취소</button>
+          </div>
+        </div>
+      </div>
+      <div id="part-tree"></div>
+    </div>
+
+    <!-- Content area -->
+    <div id="content">
+      <!-- Tree view -->
+      <div id="tab-tree" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div id="ce-toolbar">
+          <span id="ce-stat"></span>
+          <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+            <input id="ce-search" placeholder="치수·기능·CR·FM 검색…" oninput="renderCETree()" style="height:28px;font-size:11px;width:180px">
+            <select id="ce-filter-part" onchange="renderCETree()" style="height:28px;font-size:11px">
+              <option value="">전체 부품</option>
+            </select>
+          </div>
+        </div>
+        <div id="ce-body">
+          <div id="ce-cols">
+            <div class="ce-col-hdr" style="left:0;width:160px">치수 / 공차</div>
+            <div class="ce-col-hdr" style="left:170px;width:180px">기능</div>
+            <div class="ce-col-hdr" style="left:360px;width:200px">고객 요구사항</div>
+            <div class="ce-col-hdr" style="left:570px;width:160px">Failure Mode</div>
+            <div class="ce-col-hdr" style="left:740px;width:120px">Occ / Det / RPN</div>
+            <div class="ce-col-hdr" style="left:870px;width:200px">예방 / 시정 조치</div>
+          </div>
+          <div id="ce-content"></div>
+        </div>
+      </div>
+
+      <!-- Dim lookup -->
+      <div id="tab-dim" class="lookup-panel">
+        <div class="lp-search">
+          <select id="dim-sel" onchange="qDim()"><option value="">-- 치수 선택 --</option></select>
+          <input id="dim-inp" placeholder="치수ID 또는 치수명 입력 후 Enter" onkeydown="if(event.key==='Enter')qDimTxt()">
+          <button onclick="qDimTxt()">조회</button>
+        </div>
+        <div id="dim-out" style="flex:1;overflow-y:auto;"></div>
+      </div>
+
+      <!-- CR lookup -->
+      <div id="tab-cr" class="lookup-panel">
+        <div class="lp-search">
+          <select id="cr-sel" onchange="qCR()"><option value="">-- CR 선택 --</option></select>
+          <input id="cr-inp" placeholder="CR ID 또는 요구사항 입력 후 Enter" onkeydown="if(event.key==='Enter')qCRTxt()">
+          <button onclick="qCRTxt()">조회</button>
+        </div>
+        <div id="cr-out" style="flex:1;overflow-y:auto;"></div>
+      </div>
+
+      <!-- FM lookup -->
+      <div id="tab-fm" class="lookup-panel">
+        <div class="lp-search">
+          <select id="fm-sel" onchange="qFM()"><option value="">-- FM 선택 --</option></select>
+          <input id="fm-inp" placeholder="FM ID 또는 Failure Mode명 입력 후 Enter" onkeydown="if(event.key==='Enter')qFMTxt()">
+          <button onclick="qFMTxt()">조회</button>
+        </div>
+        <div id="fm-out" style="flex:1;overflow-y:auto;"></div>
+      </div>
+
+      <!-- Function Analysis Structure -->
+      <div id="tab-fas" class="fas-panel">
+        <div id="fas-toolbar">
+          <span id="fas-title">기능 분석 구조도</span>
+          <div id="fas-controls">
+            <button onclick="fasExpandAll()" class="fas-ctrl-btn">전체 펼치기</button>
+            <button onclick="fasCollapseAll()" class="fas-ctrl-btn">전체 접기</button>
+            <span id="fas-filter-wrap">
+              <select id="fas-filter-part" onchange="renderFAS()">
+                <option value="">전체 부품</option>
+              </select>
+            </span>
+          </div>
+        </div>
+        <div id="fas-body">
+          <div id="fas-left"></div>
+          <canvas id="fas-canvas"></canvas>
+          <div id="fas-right"></div>
+        </div>
+      </div>
+
+      <!-- FMEA 전체 뷰 -->
+      <div id="tab-fmea">
+        <div id="fmea-toolbar">
+          <span id="fmea-stat" style="font-size:11px;color:var(--text3)"></span>
+          <input id="fmea-search" placeholder="검색…" oninput="renderFMEATable()" style="width:160px">
+          <select id="fmea-filter-part" onchange="renderFMEATable()" style="width:150px">
+            <option value="">전체 부품</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="fmea-rpn-only" onchange="renderFMEATable()"> RPN 높은 순 정렬
+          </label>
+          <button onclick="exportFMEACSV()" style="height:28px;padding:0 12px;font:inherit;font-size:11px;background:none;border:.5px solid var(--border2);border-radius:5px;cursor:pointer;color:var(--text2);margin-left:auto">↓ CSV 내보내기</button>
+        </div>
+        <div id="fmea-body">
+          <table class="fmea-table" id="fmea-tbl">
+            <thead>
+              <tr id="fmea-grp-row"></tr>
+              <tr id="fmea-hdr-row"></tr>
+            </thead>
+            <tbody id="fmea-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DB management -->
+      <div id="tab-db" class="db-panel">
+        <div class="db-subtabs">
+          <button class="dstab active" onclick="swDB('conn')">연결 관리</button>
+          <button class="dstab" onclick="swDB('dims')">치수 등록</button>
+          <button class="dstab" onclick="swDB('crs')">CR 등록</button>
+          <button class="dstab" onclick="swDB('fms')">FM 등록</button>
+        </div>
+        <div class="db-sub-content" id="db-sub-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 제품 관리 모달 -->
+<div id="product-modal-bg">
+  <div id="product-modal">
+    <div id="product-modal-header">
+      <h2>제품 관리</h2>
+      <button class="pm-close" onclick="closeProductModal()">×</button>
+    </div>
+    <div id="product-modal-body">
+      <div id="prod-list"></div>
+      <button onclick="toggleAddProdForm()" id="show-add-prod-btn"
+        style="width:100%;padding:8px;background:none;border:.5px dashed var(--border2);
+               border-radius:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-top:4px">
+        + 새 제품 추가
+      </button>
+      <div id="add-prod-form" style="display:none">
+        <div class="pm-grid2" style="margin-bottom:8px">
+          <div class="pm-fg"><label>제품 코드 *</label><input id="np-code" placeholder="예: DD91, AOS-V2"></div>
+          <div class="pm-fg"><label>제품명 *</label><input id="np-name" placeholder="예: DD91 Driving Module"></div>
+        </div>
+        <div class="pm-fg" style="margin-bottom:8px">
+          <label>설명</label>
+          <input id="np-desc" placeholder="제품 또는 Sub Assy 설명">
+        </div>
+        <div class="pm-fg" style="margin-bottom:8px">
+          <label>상위 어셈블리 (선택)</label>
+          <select id="np-parent"><option value="">최상위 제품 (독립)</option></select>
+        </div>
+        <div class="pm-fg" style="margin-bottom:10px">
+          <label>색상</label>
+          <div class="color-palette" id="np-color-palette"></div>
+          <input type="hidden" id="np-color" value="#1D9E75">
+        </div>
+        <div class="pm-actions">
+          <button class="btn-pm-cancel" onclick="toggleAddProdForm()">취소</button>
+          <button class="btn-pm-save" onclick="createProduct()">추가</button>
+        </div>
+      </div>
+    </div>
+    <div id="product-modal-footer">
+      <button onclick="mergeProducts()" class="btn-pm-cancel" style="margin-right:auto">
+        ⊕ 제품 합치기
+      </button>
+      <button onclick="closeProductModal()" class="btn-pm-cancel">닫기</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="tooltip"></div>
+<div id="notif"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════════ */
+let DIMS = [
+  {lv:1,pid:'SYS-001',part:'완성품 어셈블리',mat:'복합소재',id:'D-000',name:'전체 길이',nom:250,tolP:0.5,tolM:0.5,unit:'mm',type:'외형'},
+  {lv:2,pid:'P-001',part:'하우징 (Housing)',mat:'알루미늄',id:'D-001',name:'하우징 외경',nom:80,tolP:0.05,tolM:0.05,unit:'mm',type:'끼워맞춤'},
+  {lv:2,pid:'P-001',part:'하우징 (Housing)',mat:'알루미늄',id:'D-002',name:'하우징 내경',nom:60,tolP:0.03,tolM:0.03,unit:'mm',type:'끼워맞춤'},
+  {lv:2,pid:'P-001',part:'하우징 (Housing)',mat:'알루미늄',id:'D-003',name:'하우징 두께',nom:10,tolP:0.1,tolM:0.1,unit:'mm',type:'구조'},
+  {lv:2,pid:'P-001',part:'하우징 (Housing)',mat:'알루미늄',id:'D-004',name:'표면 거칠기 Ra',nom:1.6,tolP:0.4,tolM:0,unit:'μm',type:'표면'},
+  {lv:3,pid:'P-002',part:'샤프트 (Shaft)',mat:'SCM440',id:'D-005',name:'샤프트 직경',nom:30,tolP:0,tolM:0.021,unit:'mm',type:'끼워맞춤'},
+  {lv:3,pid:'P-002',part:'샤프트 (Shaft)',mat:'SCM440',id:'D-006',name:'샤프트 길이',nom:120,tolP:0.1,tolM:0.1,unit:'mm',type:'기능'},
+  {lv:3,pid:'P-002',part:'샤프트 (Shaft)',mat:'SCM440',id:'D-007',name:'키홈 폭',nom:8,tolP:0,tolM:0.036,unit:'mm',type:'끼워맞춤'},
+  {lv:3,pid:'P-002',part:'샤프트 (Shaft)',mat:'SCM440',id:'D-008',name:'동심도',nom:0,tolP:0.01,tolM:0,unit:'mm',type:'GD&T'},
+  {lv:3,pid:'P-003',part:'베어링 (Bearing)',mat:'SUJ2',id:'D-009',name:'내륜 내경',nom:30,tolP:0,tolM:0.012,unit:'mm',type:'끼워맞춤'},
+  {lv:3,pid:'P-003',part:'베어링 (Bearing)',mat:'SUJ2',id:'D-010',name:'외륜 외경',nom:62,tolP:0,tolM:0.015,unit:'mm',type:'끼워맞춤'},
+  {lv:3,pid:'P-003',part:'베어링 (Bearing)',mat:'SUJ2',id:'D-011',name:'폭',nom:16,tolP:0,tolM:0.12,unit:'mm',type:'기능'},
+  {lv:3,pid:'P-004',part:'씰 (Seal)',mat:'NBR',id:'D-012',name:'씰 외경',nom:72,tolP:0.2,tolM:0.2,unit:'mm',type:'끼워맞춤'},
+  {lv:3,pid:'P-004',part:'씰 (Seal)',mat:'NBR',id:'D-013',name:'씰 내경',nom:35,tolP:0.1,tolM:0.1,unit:'mm',type:'끼워맞춤'},
+  {lv:3,pid:'P-005',part:'볼트 M8 (Bolt)',mat:'12.9등급강',id:'D-014',name:'볼트 길이',nom:25,tolP:0.5,tolM:0.5,unit:'mm',type:'체결'},
+  {lv:3,pid:'P-005',part:'볼트 M8 (Bolt)',mat:'12.9등급강',id:'D-015',name:'나사 유효경',nom:7.188,tolP:0,tolM:0.2,unit:'mm',type:'체결'},
+  {lv:3,pid:'P-006',part:'개스킷 (Gasket)',mat:'실리콘',id:'D-016',name:'두께',nom:2,tolP:0.1,tolM:0.1,unit:'mm',type:'밀봉'},
+  {lv:3,pid:'P-006',part:'개스킷 (Gasket)',mat:'실리콘',id:'D-017',name:'압축률',nom:25,tolP:5,tolM:5,unit:'%',type:'기능'},
+  {lv:2,pid:'P-007',part:'커버 (Cover)',mat:'알루미늄',id:'D-018',name:'평면도',nom:0,tolP:0.05,tolM:0,unit:'mm',type:'GD&T'},
+  {lv:2,pid:'P-007',part:'커버 (Cover)',mat:'알루미늄',id:'D-019',name:'체결 구멍 피치',nom:60,tolP:0.1,tolM:0.1,unit:'mm',type:'체결'},
+];
+let CRS = [
+  {id:'CR-001',desc:'정확한 조립 가능 (헐거움/간섭 없음)',cat:'조립성',imp:'필수',method:'끼워맞춤 게이지 검사',criteria:'끼워맞춤 등급 이내',std:'ISO 286-1'},
+  {id:'CR-002',desc:'작동 중 소음 ≤ 65dB',cat:'NVH',imp:'중요',method:'소음계 측정 (1m 거리)',criteria:'65dB(A) 이하',std:'KS B 0401'},
+  {id:'CR-003',desc:'샤프트 진동 ≤ 0.05mm',cat:'정밀도',imp:'필수',method:'레이저 측정기',criteria:'0.05mm p-p 이하',std:'ISO 1940'},
+  {id:'CR-004',desc:'정격하중 하 변형량 ≤ 0.1mm',cat:'구조',imp:'중요',method:'하중-변위 시험',criteria:'0.1mm 이하',std:'ISO 6336'},
+  {id:'CR-005',desc:'오일 누유 없음 (IP67 이상)',cat:'밀봉',imp:'필수',method:'1m 수침 30분 시험',criteria:'누유 없음',std:'IEC 60529'},
+  {id:'CR-006',desc:'수명 ≥ 10,000시간',cat:'내구성',imp:'필수',method:'가속 수명 시험',criteria:'B10 수명 ≥ 10,000h',std:'ISO 281'},
+  {id:'CR-007',desc:'정격 토크 ≥ 50 N·m',cat:'성능',imp:'필수',method:'토크 렌치/동력계',criteria:'50 N·m 이상',std:'ISO 6336'},
+  {id:'CR-008',desc:'조립 후 축방향 유격 ≤ 0.3mm',cat:'조립성',imp:'중요',method:'다이얼 게이지',criteria:'0.3mm 이하',std:''},
+  {id:'CR-009',desc:'커플링 체결 토크 달성',cat:'체결',imp:'중요',method:'토크 렌치',criteria:'규정 체결 토크 ±10%',std:''},
+  {id:'CR-010',desc:'백래시 ≤ 0.02°',cat:'정밀도',imp:'중요',method:'각도계',criteria:'0.02° 이하',std:''},
+  {id:'CR-011',desc:'볼트 체결 후 풀림 없음',cat:'체결',imp:'필수',method:'진동 내구 시험',criteria:'체결 토크 유지 ≥ 90%',std:'ISO 4762'},
+];
+let FMS = [
+  {id:'FM-001',name:'끼워맞춤 불량',desc:'부품 간 치수 오차로 조립 불가 또는 헐거움 발생',type:'치수 불량',sev:8,crId:'CR-001'},
+  {id:'FM-002',name:'진동·소음 과다',desc:'작동 중 65dB 초과 소음/진동 발생',type:'기능 불량',sev:7,crId:'CR-002'},
+  {id:'FM-003',name:'동축도 불량',desc:'샤프트 회전 편심 0.05mm 초과',type:'정밀도 불량',sev:9,crId:'CR-003'},
+  {id:'FM-004',name:'구조 변형',desc:'정격 하중 하 변형량 0.1mm 초과',type:'구조 불량',sev:6,crId:'CR-004'},
+  {id:'FM-005',name:'오일 누유',desc:'밀봉 파손으로 IP67 미달 (오일 외부 누출)',type:'밀봉 불량',sev:10,crId:'CR-005'},
+  {id:'FM-006',name:'조기 마모',desc:'접촉면 마모로 설계 수명 10,000h 미달',type:'내구 불량',sev:8,crId:'CR-006'},
+  {id:'FM-007',name:'토크 전달 불량',desc:'50 N·m 정격 토크 미달 또는 전달 불가',type:'기능 불량',sev:9,crId:'CR-007'},
+  {id:'FM-008',name:'축방향 유격 과다',desc:'조립 후 축방향 유격 0.3mm 초과',type:'조립 불량',sev:5,crId:'CR-008'},
+  {id:'FM-009',name:'커플링 미체결',desc:'샤프트 돌출 부족으로 커플링 체결 불가',type:'조립 불량',sev:6,crId:'CR-009'},
+  {id:'FM-010',name:'백래시 과다',desc:'회전 유격 0.02° 초과',type:'정밀도 불량',sev:7,crId:'CR-010'},
+  {id:'FM-011',name:'볼트 체결 불량',desc:'체결 토크 부족 또는 진동 하 풀림',type:'체결 불량',sev:7,crId:'CR-011'},
+];
+let DB = [
+  {dimId:'D-001',fId:'F-001',fName:'조립 호환성 확보',fDesc:'하우징이 마운팅 브라켓에 정확히 끼워맞춤',fType:'끼워맞춤',crId:'CR-001',imp:'필수',std:'ISO 286-1 H7/g6',fmId:'FM-001'},
+  {dimId:'D-001',fId:'F-002',fName:'진동 차단',fDesc:'하우징 외경이 마운팅과 밀착되어 진동 전달 최소화',fType:'구조',crId:'CR-002',imp:'중요',std:'KS B 0401',fmId:'FM-002'},
+  {dimId:'D-002',fId:'F-003',fName:'베어링 지지',fDesc:'내경이 베어링 외륜을 정밀하게 지지하여 하중 전달',fType:'끼워맞춤',crId:'CR-001',imp:'필수',std:'ISO 286-1 H7',fmId:'FM-001'},
+  {dimId:'D-002',fId:'F-004',fName:'동축도 유지',fDesc:'내경 정밀도가 샤프트 동축도에 직접 영향',fType:'정밀도',crId:'CR-003',imp:'필수',std:'ISO 1101',fmId:'FM-003'},
+  {dimId:'D-003',fId:'F-005',fName:'구조 강성 확보',fDesc:'두께가 하중 하에서 변형 방지',fType:'구조',crId:'CR-004',imp:'중요',std:'ISO 6336',fmId:'FM-004'},
+  {dimId:'D-004',fId:'F-006',fName:'씰 밀봉 성능',fDesc:'표면 거칠기가 씰과의 접촉면 밀봉 품질 결정',fType:'밀봉',crId:'CR-005',imp:'필수',std:'ISO 4288',fmId:'FM-005'},
+  {dimId:'D-004',fId:'F-007',fName:'마모 저항',fDesc:'접촉면 거칠기가 마찰 및 마모 속도 결정',fType:'내구',crId:'CR-006',imp:'중요',std:'ISO 4287',fmId:'FM-006'},
+  {dimId:'D-005',fId:'F-008',fName:'베어링 내륜 지지',fDesc:'샤프트 직경이 베어링 내륜과 정밀 끼워맞춤',fType:'끼워맞춤',crId:'CR-001',imp:'필수',std:'ISO 286-1 k5',fmId:'FM-001'},
+  {dimId:'D-005',fId:'F-009',fName:'토크 전달',fDesc:'직경이 전달 가능 토크와 직접 비례',fType:'구조',crId:'CR-007',imp:'필수',std:'ISO 6336',fmId:'FM-007'},
+  {dimId:'D-005',fId:'F-010',fName:'동심도 유지',fDesc:'직경 정밀도가 회전 편심에 영향',fType:'정밀도',crId:'CR-003',imp:'필수',std:'ISO 1101',fmId:'FM-003'},
+  {dimId:'D-006',fId:'F-011',fName:'조립 여유 확보',fDesc:'전체 조립 시 축방향 여유 확보',fType:'조립',crId:'CR-008',imp:'중요',std:'',fmId:'FM-008'},
+  {dimId:'D-006',fId:'F-012',fName:'커플링 연결',fDesc:'축 돌출 길이가 커플링 체결에 충분해야 함',fType:'기능',crId:'CR-009',imp:'중요',std:'',fmId:'FM-009'},
+  {dimId:'D-007',fId:'F-013',fName:'토크 전달 (키)',fDesc:'키홈과 키의 정밀한 끼워맞춤으로 토크 전달',fType:'끼워맞춤',crId:'CR-007',imp:'필수',std:'DIN 6885',fmId:'FM-007'},
+  {dimId:'D-007',fId:'F-014',fName:'백래시 방지',fDesc:'키홈 정밀도가 회전방향 유격 최소화',fType:'정밀도',crId:'CR-010',imp:'중요',std:'DIN 6885',fmId:'FM-010'},
+  {dimId:'D-008',fId:'F-004',fName:'동축도 유지',fDesc:'샤프트 동심도가 베어링 하중 분배에 영향',fType:'정밀도',crId:'CR-003',imp:'필수',std:'ISO 1101',fmId:'FM-003'},
+  {dimId:'D-008',fId:'F-015',fName:'소음/진동 저감',fDesc:'동심도 불량 시 불균형 진동 발생',fType:'NVH',crId:'CR-002',imp:'필수',std:'ISO 1940',fmId:'FM-002'},
+  {dimId:'D-009',fId:'F-008',fName:'베어링 내륜 지지',fDesc:'샤프트와 내륜의 정밀 끼워맞춤',fType:'끼워맞춤',crId:'CR-001',imp:'필수',std:'ISO 492',fmId:'FM-001'},
+  {dimId:'D-009',fId:'F-016',fName:'베어링 수명',fDesc:'내경 정밀도가 베어링 내부 하중 분배 결정',fType:'내구',crId:'CR-006',imp:'필수',std:'ISO 281',fmId:'FM-006'},
+  {dimId:'D-010',fId:'F-003',fName:'베어링 지지',fDesc:'외륜이 하우징 내경에 정밀 지지',fType:'끼워맞춤',crId:'CR-001',imp:'필수',std:'ISO 492',fmId:'FM-001'},
+  {dimId:'D-011',fId:'F-011',fName:'조립 여유 확보',fDesc:'베어링 폭이 전체 축방향 길이 스택에 영향',fType:'조립',crId:'CR-008',imp:'중요',std:'ISO 492',fmId:'FM-008'},
+  {dimId:'D-012',fId:'F-006',fName:'씰 밀봉 성능',fDesc:'씰 외경이 하우징 홈과 간섭 끼워맞춤으로 밀봉',fType:'밀봉',crId:'CR-005',imp:'필수',std:'ISO 6194',fmId:'FM-005'},
+  {dimId:'D-013',fId:'F-006',fName:'씰 밀봉 성능',fDesc:'씰 내경이 샤프트와 접촉하여 동적 밀봉',fType:'밀봉',crId:'CR-005',imp:'필수',std:'ISO 6194',fmId:'FM-005'},
+  {dimId:'D-013',fId:'F-007',fName:'마모 저항',fDesc:'씰 립과 샤프트 접촉면 마모',fType:'내구',crId:'CR-006',imp:'중요',std:'ISO 6194',fmId:'FM-006'},
+  {dimId:'D-014',fId:'F-018',fName:'볼트 체결력',fDesc:'볼트 길이가 유효 나사 체결 깊이 결정',fType:'체결',crId:'CR-011',imp:'필수',std:'ISO 4762',fmId:'FM-011'},
+  {dimId:'D-015',fId:'F-018',fName:'볼트 체결력',fDesc:'나사 유효경이 체결 토크 전달 단면적 결정',fType:'체결',crId:'CR-011',imp:'필수',std:'ISO 724',fmId:'FM-011'},
+  {dimId:'D-016',fId:'F-017',fName:'개스킷 압축 밀봉',fDesc:'두께가 적절한 압축력 및 밀봉 접촉압 제공',fType:'밀봉',crId:'CR-005',imp:'필수',std:'',fmId:'FM-005'},
+  {dimId:'D-017',fId:'F-017',fName:'개스킷 압축 밀봉',fDesc:'압축률이 밀봉 성능과 가스켓 수명 결정',fType:'밀봉',crId:'CR-005',imp:'필수',std:'',fmId:'FM-005'},
+  {dimId:'D-017',fId:'F-018',fName:'볼트 체결력',fDesc:'적정 압축률로 볼트 체결력의 균일한 분배',fType:'구조',crId:'CR-011',imp:'중요',std:'',fmId:'FM-011'},
+  {dimId:'D-018',fId:'F-017',fName:'개스킷 압축 밀봉',fDesc:'커버 평면도가 균일한 개스킷 압축 확보',fType:'밀봉',crId:'CR-005',imp:'필수',std:'ISO 1101',fmId:'FM-005'},
+  {dimId:'D-019',fId:'F-018',fName:'볼트 체결력',fDesc:'구멍 피치가 볼트 체결력의 균일한 분배 결정',fType:'체결',crId:'CR-011',imp:'중요',std:'',fmId:'FM-011'},
+];
+
+let PARTS = [
+  {id:'SYS',label:'완성품 어셈블리',lv:1,color:'#1F3864',dims:['D-000']},
+  {id:'P-001',label:'하우징',lv:2,color:'#185FA5',dims:['D-001','D-002','D-003','D-004']},
+  {id:'P-002',label:'샤프트',lv:3,color:'#1D9E75',dims:['D-005','D-006','D-007','D-008']},
+  {id:'P-003',label:'베어링',lv:3,color:'#1D9E75',dims:['D-009','D-010','D-011']},
+  {id:'P-004',label:'씰',lv:3,color:'#1D9E75',dims:['D-012','D-013']},
+  {id:'P-005',label:'볼트 M8',lv:3,color:'#1D9E75',dims:['D-014','D-015']},
+  {id:'P-006',label:'개스킷',lv:3,color:'#1D9E75',dims:['D-016','D-017']},
+  {id:'P-007',label:'커버',lv:2,color:'#185FA5',dims:['D-018','D-019']},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+const dimById = id => DIMS.find(d=>d.id===id);
+const crById  = id => CRS.find(c=>c.id===id);
+const fmById  = id => FMS.find(f=>f.id===id);
+const fmt = v => v%1===0 ? String(v) : parseFloat(v.toFixed(4));
+
+function ib(imp){ return `<span class="badge b-${imp}">${imp}</span>`; }
+function sb(s){
+  const c = s>=9?'hi':s>=6?'md':'lo';
+  return `<span class="sev-badge sev-${c}">${s}</span>`;
+}
+function chipDim(id){ return `<span class="chip chip-dim" onclick="jumpDim('${id}')">${id}</span>`; }
+function chipCR(id){  return `<span class="chip chip-cr"  onclick="jumpCR('${id}')">${id}</span>`; }
+function chipFM(id){  return !id?'—':`<span class="chip chip-fm"  onclick="jumpFM('${id}')">${id}</span>`; }
+
+function specStr(d){
+  if(!d) return '—';
+  return `<span class="spec-val">${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)} ${d.unit}</span>`;
+}
+
+function notify(msg){
+  const n = document.getElementById('notif');
+  n.textContent = msg; n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'), 2200);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME
+═══════════════════════════════════════════════════════════════ */
+function toggleTheme(){
+  const t = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.body.dataset.theme = t;
+  if(selectedPart) drawTree(selectedPart);
+}
+
+function isDark(){ return document.body.dataset.theme === 'dark'; }
+
+function getCSSVar(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB SWITCHING
+═══════════════════════════════════════════════════════════════ */
+let currentTab = 'tree';
+let currentDetail = 'info';
+let currentDB = 'conn';
+
+function switchTab(t){
+  currentTab = t;
+  document.querySelectorAll('.htab').forEach((b,i)=>{
+    b.classList.toggle('active',['tree','fas','dim','cr','fm','db','fmea'][i]===t);
+  });
+  document.getElementById('tab-tree').style.display = t==='tree'?'flex':'none';
+  const fasEl = document.getElementById('tab-fas');
+  if(fasEl) fasEl.classList.toggle('active', t==='fas');
+  const fmeaEl = document.getElementById('tab-fmea');
+  if(fmeaEl) fmeaEl.classList.toggle('active', t==='fmea');
+  if(t==='fmea'){ setTimeout(renderFMEATable, 20); }
+  ['dim','cr','fm','db'].forEach(n=>{
+    const el = document.getElementById('tab-'+n);
+    if(el){ el.classList.toggle('active', n===t); }
+  });
+  document.getElementById('sidebar').style.display =
+    (t==='tree'||t==='dim'||t==='cr'||t==='fm') ? 'flex' : 'none';
+  if(t==='tree'){ setTimeout(renderCETree, 20); }
+  if(t==='fas'){ setTimeout(renderFAS, 30); }
+  if(t==='db'){ renderDBSub(currentDB); }
+}
+
+function switchDetail(d){
+  currentDetail = d;
+  document.querySelectorAll('.dtab').forEach((b,i)=>b.classList.toggle('active',['info','connections'][i]===d));
+  if(selectedNode) renderDetailNode(selectedNode);
+  else if(selectedPart) renderDetailPart(selectedPart);
+}
+
+function swDB(t){
+  renderDBSub(t);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PARTS TREE (sidebar)
+═══════════════════════════════════════════════════════════════ */
+let editingPartIdx = -1;
+
+function togglePartMgr(){
+  const mgr = document.getElementById('part-mgr');
+  const btn = document.getElementById('part-mgr-btn');
+  const open = mgr.style.display === 'none';
+  mgr.style.display = open ? 'block' : 'none';
+  btn.style.color = open ? 'var(--teal2)' : 'var(--text3)';
+  if(open) renderPartMgrList();
+}
+
+function renderPartMgrList(){
+  const list = document.getElementById('part-mgr-list');
+  if(!list) return;
+  const lvColors = {1:'#1F3864',2:'#185FA5',3:'#1D9E75'};
+  list.innerHTML = PARTS.map((p,i)=>{
+    if(editingPartIdx === i){
+      const tOpts = DIMS.filter(d=>!PARTS.some((pp,pi)=>pi!==i&&pp.dims.includes(d.id))||p.dims.includes(d.id))
+        .map(d=>`<option value="${d.id}"${p.dims.includes(d.id)?' selected':''}>${d.id} ${d.name}</option>`).join('');
+      const allDimOpts = DIMS.map(d=>`<option value="${d.id}"${p.dims.includes(d.id)?' selected':''}>${d.id} — ${d.name}</option>`).join('');
+      return `<div style="background:var(--surface);border:.5px solid var(--border2);border-radius:6px;padding:8px;margin-bottom:6px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">
+          <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">부품 ID</div>
+            <input id="ep-id-${i}" value="${p.id}" style="font:inherit;font-size:11px;padding:3px 6px;background:var(--bg2);border:.5px solid var(--border);border-radius:4px;color:var(--text);width:100%"></div>
+          <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">부품명 *</div>
+            <input id="ep-label-${i}" value="${p.label}" style="font:inherit;font-size:11px;padding:3px 6px;background:var(--bg2);border:.5px solid var(--border);border-radius:4px;color:var(--text);width:100%"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px">
+          <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">레벨</div>
+            <select id="ep-lv-${i}" style="font:inherit;font-size:11px;padding:3px 6px;background:var(--bg2);border:.5px solid var(--border);border-radius:4px;color:var(--text);width:100%">
+              <option value="1"${p.lv==1?' selected':''}>1 — 시스템</option>
+              <option value="2"${p.lv==2?' selected':''}>2 — 어셈블리</option>
+              <option value="3"${p.lv==3?' selected':''}>3 — 부품</option>
+            </select></div>
+          <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">색상</div>
+            <select id="ep-color-${i}" style="font:inherit;font-size:11px;padding:3px 6px;background:var(--bg2);border:.5px solid var(--border);border-radius:4px;color:var(--text);width:100%">
+              <option value="#1D9E75"${p.color==='#1D9E75'?' selected':''}>녹청 (Lv.3)</option>
+              <option value="#185FA5"${p.color==='#185FA5'?' selected':''}>파랑 (Lv.2)</option>
+              <option value="#1F3864"${p.color==='#1F3864'?' selected':''}>남색 (Lv.1)</option>
+              <option value="#7F77DD"${p.color==='#7F77DD'?' selected':''}>보라</option>
+              <option value="#E24B4A"${p.color==='#E24B4A'?' selected':''}>빨강</option>
+              <option value="#EF9F27"${p.color==='#EF9F27'?' selected':''}>주황</option>
+            </select></div>
+        </div>
+        <div style="margin-bottom:6px">
+          <div style="font-size:9px;color:var(--text3);margin-bottom:3px">연결된 치수</div>
+          <select id="ep-dims-${i}" multiple style="font:inherit;font-size:11px;background:var(--bg2);border:.5px solid var(--border);border-radius:4px;color:var(--text);width:100%;height:64px">${allDimOpts}</select>
+          <div style="font-size:9px;color:var(--text3);margin-top:2px">Ctrl(또는 Cmd)+클릭으로 다중 선택</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button onclick="updatePart(${i})" style="flex:1;padding:4px;background:var(--blue2);color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">수정 저장</button>
+          <button onclick="editingPartIdx=-1;renderPartMgrList()" style="padding:4px 8px;background:none;border:.5px solid var(--border2);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text2)">취소</button>
+        </div>
+      </div>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:5px;padding:4px 2px;border-bottom:.5px solid var(--border)">
+      <span style="width:8px;height:8px;border-radius:50%;background:${p.color};flex-shrink:0;margin-left:${(p.lv-1)*8}px"></span>
+      <span style="font-size:11px;flex:1;color:var(--text)">${p.label}</span>
+      <span style="font-size:9px;color:var(--text3)">${p.dims.length}개</span>
+      <button onclick="editingPartIdx=${i};renderPartMgrList()" style="background:none;border:none;cursor:pointer;color:var(--blue2);font-size:12px;padding:1px 3px;opacity:.6" title="수정">✎</button>
+      <button onclick="deletePart(${i})" style="background:none;border:none;cursor:pointer;color:var(--red2);font-size:11px;padding:1px 3px;opacity:.6" title="삭제">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function updatePart(i){
+  const label = document.getElementById(`ep-label-${i}`).value.trim();
+  if(!label){ alert('부품명은 필수입니다.'); return; }
+  const newId = document.getElementById(`ep-id-${i}`).value.trim();
+  const oldId = PARTS[i].id;
+  if(newId !== oldId && PARTS.find((p,pi)=>p.id===newId && pi!==i)){ alert(`"${newId}"가 이미 존재합니다.`); return; }
+  const sel = document.getElementById(`ep-dims-${i}`);
+  const dims = Array.from(sel.selectedOptions).map(o=>o.value);
+  PARTS[i] = {...PARTS[i], id:newId, label,
+    lv: parseInt(document.getElementById(`ep-lv-${i}`).value),
+    color: document.getElementById(`ep-color-${i}`).value,
+    dims};
+  editingPartIdx = -1;
+  buildPartTree(); renderPartMgrList(); saveToStorage();
+  if(selectedPart && selectedPart.id === oldId){ selectedPart = PARTS[i]; drawTree(PARTS[i]); }
+  notify('부품이 수정되었습니다');
+}
+
+function deletePart(i){
+  if(!confirm(`"${PARTS[i].label}"을 삭제하시겠습니까?\n연결 정보(DB)는 유지됩니다.`)) return;
+  if(selectedPart && selectedPart.id === PARTS[i].id){ selectedPart=null; selectedNode=null; drawPlaceholder(); }
+  PARTS.splice(i,1);
+  editingPartIdx = -1;
+  buildPartTree(); renderPartMgrList(); saveToStorage();
+  notify('부품이 삭제되었습니다');
+}
+
+function showAddPartForm(){
+  document.getElementById('add-part-form').style.display = 'block';
+  document.getElementById('add-part-btn').style.display = 'none';
+}
+function cancelAddPart(){
+  document.getElementById('add-part-form').style.display = 'none';
+  document.getElementById('add-part-btn').style.display = 'block';
+  ['np-id','np-label'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+}
+function addPart(){
+  const id = document.getElementById('np-id').value.trim();
+  const label = document.getElementById('np-label').value.trim();
+  if(!id || !label){ alert('부품 ID와 부품명은 필수입니다.'); return; }
+  if(PARTS.find(p=>p.id===id)){ alert(`"${id}"가 이미 존재합니다.`); return; }
+  PARTS.push({id, label,
+    lv: parseInt(document.getElementById('np-lv').value),
+    color: document.getElementById('np-color').value,
+    dims: []});
+  cancelAddPart();
+  buildPartTree(); renderPartMgrList(); saveToStorage();
+  notify(`"${label}" 부품이 추가되었습니다`);
+}
+
+function buildPartTree(){
+  const tree = document.getElementById('part-tree');
+  tree.innerHTML = '';
+  PARTS.forEach(p=>{
+    const el = document.createElement('div');
+    el.className = 'tree-node';
+    el.style.paddingLeft = (8+(p.lv-1)*14)+'px';
+    const cnt = DB.filter(r=>p.dims.includes(r.dimId)).length;
+    el.innerHTML = `<span class="tn-dot" style="background:${p.color}"></span>
+      <span class="tn-label">${p.label}</span>
+      ${cnt?`<span class="tn-count">${cnt}</span>`:''}`;
+    el.onclick = ()=>{
+      document.querySelectorAll('.tree-node').forEach(e=>e.classList.remove('active'));
+      el.classList.add('active');
+      selectedPart = p; selectedNode = null;
+      /* CE 트리: 해당 부품 섹션으로 스크롤 */
+      if(currentTab==='tree'){
+        /* partKey = p.id (PARTS 기반) 또는 '_'+partLabel (기타) */
+        const sec = document.getElementById('ce-sec-'+p.id);
+        if(sec){
+          sec.scrollIntoView({behavior:'smooth', block:'start'});
+          if(ceCollapsed.has(p.id)){ ceCollapsed.delete(p.id); renderCETree(); }
+        }
+      }
+    };
+    tree.appendChild(el);
+    p.dims.forEach(dId=>{
+      const d = dimById(dId); if(!d) return;
+      const de = document.createElement('div');
+      de.className = 'tree-dim';
+      de.style.paddingLeft = (22+(p.lv-1)*14)+'px';
+      de.textContent = d.name;
+      de.onclick = e=>{ e.stopPropagation(); el.click(); };
+      tree.appendChild(de);
+    });
+  });
+}
+
+function rebuildSelects(){
+  ['dim-sel','cr-sel','fm-sel'].forEach(id=>{
+    const s=document.getElementById(id); if(!s) return; s.innerHTML='';
+  });
+  document.getElementById('dim-sel').innerHTML =
+    '<option value="">-- 치수 선택 --</option>' +
+    DIMS.map(d=>`<option value="${d.id}">${d.id} — ${d.name}</option>`).join('');
+  document.getElementById('cr-sel').innerHTML =
+    '<option value="">-- CR 선택 --</option>' +
+    CRS.map(c=>`<option value="${c.id}">${c.id} — ${c.desc.substring(0,24)}…</option>`).join('');
+  document.getElementById('fm-sel').innerHTML =
+    '<option value="">-- FM 선택 --</option>' +
+    FMS.map(f=>`<option value="${f.id}">${f.id} — ${f.name}</option>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CANVAS — Cause & Effect Tree
+═══════════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('canvas');
+const ctx = canvas ? canvas.getContext('2d') : null;
+let nodes = [], edges = [];
+let scrollY = 0, maxScrollY = 0;
+let hoveredNode = null;
+let dpr = window.devicePixelRatio||1;
+let animId = null;
+
+function resizeCanvas(){
+  if(!canvas) return;
+  const panel = document.getElementById('canvas-panel');
+  const w = panel.clientWidth, h = panel.clientHeight;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function clr(v){ return getComputedStyle(document.body).getPropertyValue(v).trim(); }
+
+const NODE_COLORS = {
+  dim:  ()=>({fill:clr('--teal-bg'),  stroke:clr('--teal2'),  text:clr('--teal')}),
+  spec: ()=>({fill:clr('--amber-bg'), stroke:clr('--amber2'), text:clr('--amber')}),
+  func: ()=>({fill:clr('--blue-bg'),  stroke:clr('--blue2'),  text:clr('--blue')}),
+  cr:   ()=>({fill:clr('--purple-bg'),stroke:clr('--purple2'),text:clr('--purple')}),
+  fm:   ()=>({fill:clr('--red-bg'),   stroke:clr('--red2'),   text:clr('--red')}),
+};
+
+function rr(x,y,w,h,r){
+  if(!ctx) return;
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+
+function drawNode(n, hovered){
+  if(!ctx) return;
+  const c = NODE_COLORS[n.type]();
+  ctx.save();
+  rr(n.x,n.y,n.w,n.h,5);
+  ctx.fillStyle = hovered ? c.stroke : c.fill; ctx.fill();
+  ctx.strokeStyle = c.stroke; ctx.lineWidth = hovered?1.5:.7; ctx.stroke();
+  ctx.fillStyle = hovered ? '#fff' : c.text;
+  ctx.font = `500 11px IBM Plex Sans KR, sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const lines = n.lines||[n.label];
+  const lh=13, sy=n.y+n.h/2-(lines.length-1)*lh/2;
+  lines.forEach((l,i)=>ctx.fillText(l,n.x+n.w/2,sy+i*lh));
+  ctx.restore();
+}
+
+function drawEdge(a,b,color,dashed){
+  if(!a||!b||!ctx) return;
+  const x1=a.x+a.w, y1=a.y+a.h/2;
+  const x2=b.x, y2=b.y+b.h/2;
+  const mx=(x1+x2)/2;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=.9;
+  if(dashed) ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(x1,y1);
+  ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2);
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x2-5,y2-3); ctx.lineTo(x2-5,y2+3); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function wrapText(text,maxW){
+  if(!ctx) return [text];
+  ctx.font='500 11px IBM Plex Sans KR, sans-serif';
+  const words=text.split(' '); const lines=[]; let cur='';
+  for(const w of words){
+    const t=cur?cur+' '+w:w;
+    if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}
+    else cur=t;
+  }
+  if(cur) lines.push(cur);
+  return lines;
+}
+
+function buildNodes(part){
+  if(!ctx) return;
+  nodes=[]; edges=[];
+  const dimIds=part.dims;
+  const rows=DB.filter(r=>dimIds.includes(r.dimId));
+  if(!rows.length) return;
+
+  const C0=14, C1=142, C2=278, C3=414;
+  const G=8;
+  let dimY=24;
+  const dimMap={}, funcMap={}, crMap={}, fmMap={};
+
+  [...new Set(rows.map(r=>r.dimId))].forEach(dId=>{
+    const d=dimById(dId);
+    const lines=wrapText(d?d.name:dId,112);
+    const h=Math.max(38,lines.length*13+12);
+    const dn={id:'dim_'+dId,type:'dim',label:d?d.name:dId,lines,x:C0,y:dimY,w:120,h,data:{dim:d,rows:rows.filter(r=>r.dimId===dId)}};
+    nodes.push(dn); dimMap[dId]=dn;
+    if(d){
+      const sl=`${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)} ${d.unit}`;
+      const sn={id:'spec_'+dId,type:'spec',label:sl,lines:[sl],x:C0,y:dimY+h+G,w:120,h:30,data:{dim:d}};
+      nodes.push(sn); edges.push({from:dn,to:sn,color:'#EF9F27',dashed:true});
+      dimY+=h+30+G*2+6;
+    } else { dimY+=h+G+6; }
+  });
+
+  let funcY=24;
+  rows.forEach(r=>{
+    const fKey=r.dimId+'_'+r.fId;
+    if(!funcMap[fKey]){
+      const lines=wrapText(r.fName,108);
+      const h=Math.max(36,lines.length*13+12);
+      const fn={id:'func_'+fKey,type:'func',label:r.fName,lines,x:C1,y:funcY,w:118,h,data:{row:r}};
+      nodes.push(fn); funcMap[fKey]=fn;
+      if(dimMap[r.dimId]) edges.push({from:dimMap[r.dimId],to:fn,color:'#378ADD',dashed:false});
+      funcY+=h+G;
+    } else {
+      if(dimMap[r.dimId]) edges.push({from:dimMap[r.dimId],to:funcMap[fKey],color:'#378ADD',dashed:false});
+    }
+  });
+
+  let crY=24;
+  rows.forEach(r=>{
+    const fKey=r.dimId+'_'+r.fId;
+    if(!crMap[r.crId]){
+      const cr=crById(r.crId);
+      const label=r.crId+(cr?': '+cr.desc.substring(0,16):'');
+      const lines=wrapText(label,108);
+      const h=Math.max(36,lines.length*13+12);
+      const cn={id:'cr_'+r.crId,type:'cr',label,lines,x:C2,y:crY,w:118,h,data:{cr}};
+      nodes.push(cn); crMap[r.crId]=cn;
+      crY+=h+G;
+    }
+    if(funcMap[fKey]&&crMap[r.crId])
+      edges.push({from:funcMap[fKey],to:crMap[r.crId],color:'#7F77DD',dashed:false});
+  });
+
+  let fmY=24;
+  rows.forEach(r=>{
+    if(!fmMap[r.fmId]&&r.fmId){
+      const fm=fmById(r.fmId);
+      const label='FM: '+(fm?fm.name:r.fmId);
+      const lines=wrapText(label,108);
+      const h=Math.max(36,lines.length*13+12);
+      const fn={id:'fm_'+r.fmId,type:'fm',label,lines,x:C3,y:fmY,w:118,h,data:{fm}};
+      nodes.push(fn); fmMap[r.fmId]=fn;
+      fmY+=h+G;
+    }
+    if(crMap[r.crId]&&fmMap[r.fmId]&&r.fmId)
+      edges.push({from:crMap[r.crId],to:fmMap[r.fmId],color:'#E24B4A',dashed:true});
+  });
+}
+
+function renderCanvas(){
+  if(!ctx) return;
+  const W=canvas.width/dpr, H=canvas.height/dpr;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=clr('--bg'); ctx.fillRect(0,0,W,H);
+  drawColHeaders(W,H);
+  ctx.save(); ctx.beginPath(); ctx.rect(0,30,W,H-30); ctx.clip();
+  ctx.translate(0,30-scrollY);
+  edges.forEach(e=>drawEdge(e.from,e.to,e.color,e.dashed));
+  nodes.forEach(n=>drawNode(n,hoveredNode===n));
+  ctx.restore();
+  if(maxScrollY>0){
+    const sbH=Math.max(28,(H-30)*(H-30)/((Math.max(...nodes.map(n=>n.y+n.h),0))+30));
+    const sbY=30+(scrollY/maxScrollY)*((H-30)-sbH);
+    ctx.fillStyle=clr('--bg3');
+    rr(W-5,sbY,3,sbH,1.5); ctx.fill();
+  }
+}
+
+function drawColHeaders(W,H){
+  if(!ctx) return;
+  ctx.fillStyle=clr('--surface'); ctx.fillRect(0,0,W,30);
+  ctx.strokeStyle=clr('--border'); ctx.lineWidth=.5;
+  ctx.beginPath(); ctx.moveTo(0,30); ctx.lineTo(W,30); ctx.stroke();
+  const cols=[{x:14,w:120,lbl:'치수 / 공차'},{x:142,w:118,lbl:'기능'},{x:278,w:118,lbl:'고객 요구사항'},{x:414,w:118,lbl:'Failure Mode'}];
+  ctx.font='500 10px IBM Plex Sans KR, sans-serif';
+  ctx.textBaseline='middle'; ctx.textAlign='center';
+  cols.forEach((c,i)=>{
+    ctx.fillStyle=clr('--text3');
+    ctx.fillText(c.lbl,c.x+c.w/2,15);
+    if(i>0){
+      ctx.strokeStyle=clr('--border'); ctx.lineWidth=.5;
+      ctx.beginPath(); ctx.moveTo(c.x-4,4); ctx.lineTo(c.x-4,26); ctx.stroke();
+    }
+  });
+}
+
+function drawPlaceholder(){
+  if(!ctx) return;
+  const W=canvas.width/dpr,H=canvas.height/dpr;
+  ctx.fillStyle=clr('--bg'); ctx.fillRect(0,0,W,H);
+  drawColHeaders(W,H);
+  ctx.fillStyle=clr('--text3'); ctx.font='13px IBM Plex Sans KR,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('왼쪽 트리에서 부품을 선택하세요',W/2,(H+30)/2);
+}
+
+function drawTree(part){
+  if(!ctx) return;
+  scrollY=0; selectedNode=null;
+  buildNodes(part);
+  const contentH=Math.max(...nodes.map(n=>n.y+n.h),0)+40;
+  const H=canvas.height/dpr;
+  maxScrollY=Math.max(0,contentH-(H-30));
+  renderCanvas();
+}
+
+/* canvas events */
+if(canvas){
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  scrollY=Math.max(0,Math.min(maxScrollY,scrollY+e.deltaY*.5));
+  if(selectedPart||nodes.length) renderCanvas();
+},{passive:false});
+
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top+scrollY-30;
+  const prev=hoveredNode;
+  hoveredNode=nodes.find(n=>mx>=n.x&&mx<=n.x+n.w&&my>=n.y&&my<=n.y+n.h)||null;
+  canvas.style.cursor=hoveredNode?'pointer':'default';
+  if(hoveredNode!==prev) renderCanvas();
+  if(hoveredNode) showTooltip(e.clientX,e.clientY,hoveredNode);
+  else hideTooltip();
+});
+
+canvas.addEventListener('mouseleave',()=>{ hideTooltip(); hoveredNode=null; renderCanvas(); });
+
+canvas.addEventListener('click',()=>{
+  if(!hoveredNode) return;
+  selectedNode=hoveredNode;
+  renderDetailNode(hoveredNode);
+  const dp=document.getElementById('detail-panel');
+  if(dp.style.display==='none') dp.style.display='flex';
+});
+
+function showTooltip(x,y,n){
+  const t=document.getElementById('tooltip');
+  let txt='';
+  if(n.type==='dim'&&n.data.dim){ const d=n.data.dim; txt=`${d.name}<br><small>${d.part} · ${d.type}</small>`; }
+  else if(n.type==='spec'&&n.data.dim){ txt=`공칭: ${fmt(n.data.dim.nom)} ${n.data.dim.unit}<br>공차: +${fmt(n.data.dim.tolP)} / -${fmt(n.data.dim.tolM)}`; }
+  else if(n.type==='func'&&n.data.row){ txt=`${n.data.row.fName}<br><small>${n.data.row.fDesc||''}</small>`; }
+  else if(n.type==='cr'&&n.data.cr){ txt=`${n.data.cr.id}<br>${n.data.cr.desc}<br><small>${n.data.cr.criteria||''}</small>`; }
+  else if(n.type==='fm'&&n.data.fm){ txt=`${n.data.fm.name}<br>심각도: ${n.data.fm.sev}<br><small>${n.data.fm.desc||''}</small>`; }
+  if(!txt) return;
+  t.innerHTML=txt; t.style.display='block';
+  t.style.left=Math.min(x+12,window.innerWidth-260)+'px';
+  t.style.top=(y+12)+'px';
+}
+function hideTooltip(){ document.getElementById('tooltip').style.display='none'; }
+
+}
+/* detail panel */
+function renderDetailPart(p){
+  const rows=DB.filter(r=>p.dims.includes(r.dimId));
+  let h='';
+  if(currentDetail==='info'){
+    h=`<div class="info-grid">
+      <div class="info-item"><div class="info-lbl">부품 ID</div><div class="info-val">${p.id}</div></div>
+      <div class="info-item"><div class="info-lbl">부품명</div><div class="info-val">${p.label}</div></div>
+      <div class="info-item"><div class="info-lbl">레벨</div><div class="info-val">Lv. ${p.lv}</div></div>
+      <div class="info-item"><div class="info-lbl">치수 수</div><div class="info-val">${p.dims.length}개</div></div>
+      <div class="info-item"><div class="info-lbl">연결 수</div><div class="info-val">${rows.length}건</div></div>
+    </div>`;
+  } else {
+    h=`<table class="result-table"><thead><tr><th>치수</th><th>기능</th><th>CR</th><th>중요도</th><th>FM</th></tr></thead><tbody>`;
+    rows.forEach(r=>{const d=dimById(r.dimId);h+=`<tr><td>${chipDim(r.dimId)}</td><td style="font-size:11px">${r.fName}</td><td>${chipCR(r.crId)}</td><td>${ib(r.imp)}</td><td>${chipFM(r.fmId)}</td></tr>`;});
+    h+='</tbody></table>';
+  }
+  document.getElementById('detail-content').innerHTML=h;
+}
+
+function renderDetailNode(n){
+  let h='';
+  if(currentDetail==='info'){
+    if(n.type==='dim'&&n.data.dim){
+      const d=n.data.dim;
+      h=`<div class="info-grid">
+        <div class="info-item"><div class="info-lbl">치수 ID</div><div class="info-val">${d.id}</div></div>
+        <div class="info-item"><div class="info-lbl">치수명</div><div class="info-val">${d.name}</div></div>
+        <div class="info-item"><div class="info-lbl">공칭값/공차</div><div class="info-val">${specStr(d)}</div></div>
+        <div class="info-item"><div class="info-lbl">단위</div><div class="info-val">${d.unit}</div></div>
+        <div class="info-item"><div class="info-lbl">치수유형</div><div class="info-val">${d.type}</div></div>
+        <div class="info-item"><div class="info-lbl">재질</div><div class="info-val">${d.mat}</div></div>
+      </div>`;
+    } else if(n.type==='func'&&n.data.row){
+      const r=n.data.row;
+      h=`<div class="info-grid">
+        <div class="info-item"><div class="info-lbl">기능 ID</div><div class="info-val">${r.fId||'—'}</div></div>
+        <div class="info-item"><div class="info-lbl">기능명</div><div class="info-val">${r.fName}</div></div>
+        <div class="info-item"><div class="info-lbl">기능유형</div><div class="info-val">${r.fType}</div></div>
+        <div class="info-item" style="grid-column:span 3"><div class="info-lbl">설명</div><div class="info-val">${r.fDesc||'—'}</div></div>
+      </div>`;
+    } else if(n.type==='cr'&&n.data.cr){
+      const c=n.data.cr;
+      h=`<div class="info-grid">
+        <div class="info-item"><div class="info-lbl">CR ID</div><div class="info-val">${c.id}</div></div>
+        <div class="info-item" style="grid-column:span 2"><div class="info-lbl">고객 요구사항</div><div class="info-val">${c.desc}</div></div>
+        <div class="info-item"><div class="info-lbl">분류</div><div class="info-val">${c.cat}</div></div>
+        <div class="info-item"><div class="info-lbl">중요도</div><div class="info-val">${ib(c.imp)}</div></div>
+        <div class="info-item"><div class="info-lbl">합격기준</div><div class="info-val">${c.criteria||'—'}</div></div>
+        <div class="info-item"><div class="info-lbl">측정방법</div><div class="info-val">${c.method||'—'}</div></div>
+        <div class="info-item"><div class="info-lbl">규격</div><div class="info-val">${c.std||'—'}</div></div>
+      </div>`;
+    } else if(n.type==='fm'&&n.data.fm){
+      const f=n.data.fm;
+      h=`<div class="info-grid">
+        <div class="info-item"><div class="info-lbl">FM ID</div><div class="info-val">${f.id}</div></div>
+        <div class="info-item"><div class="info-lbl">FM명</div><div class="info-val">${f.name}</div></div>
+        <div class="info-item"><div class="info-lbl">심각도</div><div class="info-val">${sb(f.sev)}</div></div>
+        <div class="info-item"><div class="info-lbl">FM유형</div><div class="info-val">${f.type}</div></div>
+        <div class="info-item" style="grid-column:span 3"><div class="info-lbl">설명</div><div class="info-val">${f.desc||'—'}</div></div>
+      </div>`;
+    }
+  } else {
+    // connections tab
+    if(n.type==='dim'){
+      const dId=n.id.replace('dim_','');
+      const rows=DB.filter(r=>r.dimId===dId);
+      h=`<table class="result-table"><thead><tr><th>기능</th><th>CR</th><th>중요도</th><th>FM</th></tr></thead><tbody>`;
+      rows.forEach(r=>{ h+=`<tr><td>${r.fName}</td><td>${chipCR(r.crId)}</td><td>${ib(r.imp)}</td><td>${chipFM(r.fmId)}</td></tr>`; });
+      h+='</tbody></table>';
+    } else if(n.type==='cr'){
+      const crId=n.id.replace('cr_','');
+      const rows=DB.filter(r=>r.crId===crId);
+      h=`<table class="result-table"><thead><tr><th>치수</th><th>기능</th><th>FM</th></tr></thead><tbody>`;
+      rows.forEach(r=>{ h+=`<tr><td>${chipDim(r.dimId)}</td><td>${r.fName}</td><td>${chipFM(r.fmId)}</td></tr>`; });
+      h+='</tbody></table>';
+    } else if(n.type==='fm'){
+      const fmId=n.id.replace('fm_','');
+      const rows=DB.filter(r=>r.fmId===fmId);
+      h=`<table class="result-table"><thead><tr><th>치수</th><th>기능</th><th>CR</th></tr></thead><tbody>`;
+      rows.forEach(r=>{ h+=`<tr><td>${chipDim(r.dimId)}</td><td>${r.fName}</td><td>${chipCR(r.crId)}</td></tr>`; });
+      h+='</tbody></table>';
+    }
+  }
+  document.getElementById('detail-content').innerHTML = h||'<div class="empty">정보 없음</div>';
+}
+
+/* jump from chips */
+function jumpDim(id){
+  switchTab('dim');
+  const s=document.getElementById('dim-sel'); s.value=id; qDim();
+}
+function jumpCR(id){
+  switchTab('cr');
+  const s=document.getElementById('cr-sel'); s.value=id; qCR();
+}
+function jumpFM(id){
+  switchTab('fm');
+  const s=document.getElementById('fm-sel'); s.value=id; qFM();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOOKUPS
+═══════════════════════════════════════════════════════════════ */
+function qDim(){ const v=document.getElementById('dim-sel').value; if(v) rDim(v); }
+function qDimTxt(){
+  const v=document.getElementById('dim-inp').value.trim(); if(!v) return;
+  const d=DIMS.find(d=>d.id===v||d.name===v||d.name.includes(v));
+  if(d) rDim(d.id);
+  else document.getElementById('dim-out').innerHTML=`<div class="empty">없음: "${v}"</div>`;
+}
+function rDim(id){
+  const d=dimById(id); const rows=DB.filter(r=>r.dimId===id);
+  let h=`<div class="info-card"><div class="info-grid">
+    <div class="info-item"><div class="info-lbl">치수 ID</div><div class="info-val">${d?d.id:id}</div></div>
+    <div class="info-item"><div class="info-lbl">치수명</div><div class="info-val">${d?d.name:'—'}</div></div>
+    <div class="info-item"><div class="info-lbl">부품명</div><div class="info-val">${d?d.part:'—'}</div></div>
+    <div class="info-item"><div class="info-lbl">공칭값/공차</div><div class="info-val">${specStr(d)}</div></div>
+    <div class="info-item"><div class="info-lbl">치수유형</div><div class="info-val">${d?d.type:'—'}</div></div>
+    <div class="info-item"><div class="info-lbl">재질</div><div class="info-val">${d?d.mat:'—'}</div></div>
+    <div class="info-item"><div class="info-lbl">연결 수</div><div class="info-val">${rows.length}건</div></div>
+  </div></div>
+  <div class="section-label">관련 기능 및 고객 요구사항</div>
+  <table class="result-table"><thead><tr><th>기능 ID</th><th>기능명</th><th>유형</th><th>CR</th><th>고객 요구사항</th><th>중요도</th><th>FM</th><th>규격</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const cr=crById(r.crId);
+    h+=`<tr><td style="font-size:10px;font-family:var(--font-mono)">${r.fId||'—'}</td>
+    <td>${r.fName}</td><td style="font-size:11px;color:var(--text2)">${r.fType}</td>
+    <td>${chipCR(r.crId)}</td><td style="font-size:11px;max-width:160px">${cr?cr.desc:'—'}</td>
+    <td>${ib(r.imp)}</td><td>${chipFM(r.fmId)}</td>
+    <td style="font-size:10px;color:var(--text3)">${r.std||'—'}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  if(!rows.length) h+='<div class="empty">연결된 기능이 없습니다</div>';
+  document.getElementById('dim-out').innerHTML=h;
+}
+
+function qCR(){ const v=document.getElementById('cr-sel').value; if(v) rCR(v); }
+function qCRTxt(){
+  const v=document.getElementById('cr-inp').value.trim(); if(!v) return;
+  const c=CRS.find(c=>c.id===v||c.desc.includes(v));
+  if(c) rCR(c.id);
+  else document.getElementById('cr-out').innerHTML=`<div class="empty">없음: "${v}"</div>`;
+}
+function rCR(id){
+  const cr=crById(id); const rows=DB.filter(r=>r.crId===id);
+  if(!cr){ document.getElementById('cr-out').innerHTML='<div class="empty">결과 없음</div>'; return; }
+  let h=`<div class="info-card"><div class="info-grid">
+    <div class="info-item"><div class="info-lbl">CR ID</div><div class="info-val">${cr.id}</div></div>
+    <div class="info-item" style="grid-column:span 2"><div class="info-lbl">고객 요구사항</div><div class="info-val">${cr.desc}</div></div>
+    <div class="info-item"><div class="info-lbl">분류</div><div class="info-val">${cr.cat}</div></div>
+    <div class="info-item"><div class="info-lbl">중요도</div><div class="info-val">${ib(cr.imp)}</div></div>
+    <div class="info-item"><div class="info-lbl">측정 방법</div><div class="info-val">${cr.method}</div></div>
+    <div class="info-item"><div class="info-lbl">합격 기준</div><div class="info-val">${cr.criteria}</div></div>
+    ${cr.std?`<div class="info-item"><div class="info-lbl">규격</div><div class="info-val">${cr.std}</div></div>`:''}
+  </div></div>
+  <div class="section-label">관련 부품 및 치수 (${rows.length}건)</div>
+  <table class="result-table"><thead><tr><th>치수 ID</th><th>치수명</th><th>공칭값/공차</th><th>단위</th><th>치수유형</th><th>부품명</th><th>기능명</th><th>FM</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const d=dimById(r.dimId);
+    h+=`<tr><td>${chipDim(r.dimId)}</td><td>${d?d.name:r.dimId}</td>
+    <td style="font-family:var(--font-mono);font-size:11px">${d?`${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)}`:'—'}</td>
+    <td style="font-size:11px">${d?d.unit:'—'}</td>
+    <td style="font-size:11px;color:var(--text2)">${d?d.type:'—'}</td>
+    <td style="font-size:11px">${d?d.part:'—'}</td>
+    <td style="font-size:11px">${r.fName}</td>
+    <td>${chipFM(r.fmId)}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  document.getElementById('cr-out').innerHTML=h;
+}
+
+function qFM(){ const v=document.getElementById('fm-sel').value; if(v) rFM(v); }
+function qFMTxt(){
+  const v=document.getElementById('fm-inp').value.trim(); if(!v) return;
+  const f=FMS.find(f=>f.id===v||f.name.includes(v));
+  if(f) rFM(f.id);
+  else document.getElementById('fm-out').innerHTML=`<div class="empty">없음: "${v}"</div>`;
+}
+function rFM(id){
+  const fm=fmById(id); const rows=DB.filter(r=>r.fmId===id);
+  if(!fm){ document.getElementById('fm-out').innerHTML='<div class="empty">결과 없음</div>'; return; }
+  const cr=crById(fm.crId);
+  let h=`<div class="info-card"><div class="info-grid">
+    <div class="info-item"><div class="info-lbl">FM ID</div><div class="info-val">${fm.id}</div></div>
+    <div class="info-item"><div class="info-lbl">Failure Mode</div><div class="info-val">${fm.name}</div></div>
+    <div class="info-item"><div class="info-lbl">FM 유형</div><div class="info-val">${fm.type}</div></div>
+    <div class="info-item"><div class="info-lbl">심각도</div><div class="info-val">${sb(fm.sev)}</div></div>
+    <div class="info-item" style="grid-column:span 2"><div class="info-lbl">FM 설명</div><div class="info-val">${fm.desc}</div></div>
+    ${cr?`<div class="info-item" style="grid-column:span 2"><div class="info-lbl">불만족 CR</div><div class="info-val">${chipCR(fm.crId)} ${cr.desc}</div></div>`:''}
+  </div></div>
+  <div class="section-label">관련 부품 및 치수 (${rows.length}건)</div>
+  <table class="result-table"><thead><tr><th>치수 ID</th><th>치수명</th><th>공칭값/공차</th><th>단위</th><th>치수유형</th><th>부품명</th><th>기능명</th><th>중요도</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const d=dimById(r.dimId);
+    h+=`<tr><td>${chipDim(r.dimId)}</td><td>${d?d.name:r.dimId}</td>
+    <td style="font-family:var(--font-mono);font-size:11px">${d?`${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)}`:'—'}</td>
+    <td style="font-size:11px">${d?d.unit:'—'}</td>
+    <td style="font-size:11px;color:var(--text2)">${d?d.type:'—'}</td>
+    <td style="font-size:11px">${d?d.part:'—'}</td>
+    <td style="font-size:11px">${r.fName}</td>
+    <td>${ib(r.imp)}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  document.getElementById('fm-out').innerHTML=h;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DB MANAGEMENT
+═══════════════════════════════════════════════════════════════ */
+let showForms={conn:false,dims:false,crs:false,fms:false};
+let editingConn = -1;
+
+function renderDBSub(t){
+  /* t가 생략되면 현재 활성 서브탭을 다시 그린다 */
+  if(!t) t = currentDB;
+  currentDB = t;
+
+  /* 서브탭 버튼 active 동기화 */
+  document.querySelectorAll('.dstab').forEach((b,i)=>{
+    b.classList.toggle('active', ['conn','dims','crs','fms'][i] === t);
+  });
+
+  /* tab-db가 현재 활성 탭이 아니어도 콘텐츠는 갱신 (탭 전환 시 최신 상태 유지) */
+  const el = document.getElementById('db-sub-content');
+  if(!el) return;
+
+  /* HTML 빌드 */
+  let html = '';
+  if(t==='conn')      html = buildConnHTML();
+  else if(t==='dims') html = buildDimsHTML();
+  else if(t==='crs')  html = buildCRsHTML();
+  else if(t==='fms')  html = buildFMsHTML();
+
+  /* innerHTML 직접 세팅 → 즉시 DOM 반영 */
+  el.innerHTML = html;
+
+  if(t==='conn' && showForms.conn) setTimeout(fillConnDim, 10);
+}
+
+function buildConnHTML(){
+  const uD=[...new Set(DB.map(r=>r.dimId))];
+  const uC=[...new Set(DB.map(r=>r.crId))];
+  const uF=[...new Set(DB.map(r=>r.fmId))];
+  let h=`<div class="stat-row">
+    <div class="stat-box"><div class="stat-n" style="color:var(--teal)">${uD.length}</div><div class="stat-l">등록 치수</div></div>
+    <div class="stat-box"><div class="stat-n" style="color:var(--purple)">${uC.length}</div><div class="stat-l">고객 요구사항</div></div>
+    <div class="stat-box"><div class="stat-n" style="color:var(--red)">${uF.length}</div><div class="stat-l">Failure Mode</div></div>
+    <div class="stat-box"><div class="stat-n">${DB.length}</div><div class="stat-l">전체 연결</div></div>
+  </div>
+  <button class="add-btn" onclick="toggleForm('conn')">${showForms.conn?'▲ 접기':'+ 새 연결 추가'}</button>`;
+  if(showForms.conn){
+    const dO=DIMS.map(d=>`<option value="${d.id}">${d.id} — ${d.name}</option>`).join('');
+    const cO=CRS.map(c=>`<option value="${c.id}">${c.id} — ${c.desc.substring(0,20)}…</option>`).join('');
+    const fO=FMS.map(f=>`<option value="${f.id}">${f.id} — ${f.name}</option>`).join('');
+    h+=`<div class="form-card">
+      <div class="fgrid g4" style="margin-bottom:8px">
+        <div class="fg"><label>치수 선택 *</label><select id="cf-dim" onchange="fillConnDim()"><option value="">선택</option>${dO}</select></div>
+        <div class="fg"><label>치수ID</label><input id="cf-did" class="ro" readonly></div>
+        <div class="fg"><label>공칭값/공차</label><input id="cf-spec" class="ro" readonly></div>
+        <div class="fg"><label>단위/유형</label><input id="cf-ut" class="ro" readonly></div>
+      </div>
+      <div class="fgrid g4" style="margin-bottom:8px">
+        <div class="fg"><label>부품명</label><input id="cf-part" class="ro" readonly></div>
+        <div class="fg"><label>재질</label><input id="cf-mat" class="ro" readonly></div>
+        <div class="fg"><label>기능 ID</label><input id="cf-fid" placeholder="예: F-020"></div>
+        <div class="fg"><label>기능명 *</label><input id="cf-fn" placeholder="기능명 입력"></div>
+      </div>
+      <div class="fgrid g3" style="margin-bottom:8px">
+        <div class="fg"><label>기능유형</label><input id="cf-ft" placeholder="끼워맞춤, 구조, 밀봉…"></div>
+        <div class="fg" style="grid-column:span 2"><label>기능설명</label><input id="cf-fd" placeholder="기능에 대한 상세 설명"></div>
+      </div>
+      <div class="fgrid g4">
+        <div class="fg"><label>CR ID *</label><select id="cf-cr"><option value="">선택</option>${cO}</select></div>
+        <div class="fg"><label>중요도</label><select id="cf-imp"><option>필수</option><option>중요</option><option>보통</option></select></div>
+        <div class="fg"><label>FM ID</label><select id="cf-fm"><option value="">선택</option>${fO}</select></div>
+        <div class="fg"><label>규격</label><input id="cf-std" placeholder="ISO 6336…"></div>
+      </div>
+      <div class="fgrid g4" style="margin-top:8px">
+        <div class="fg"><label>발생도 Occ (1~10)</label><input id="cf-occ" type="number" min="1" max="10" placeholder="1~10" style="font-family:var(--font-mono)"></div>
+        <div class="fg"><label>검출도 Det (1~10)</label><input id="cf-det" type="number" min="1" max="10" placeholder="1~10" style="font-family:var(--font-mono)"></div>
+        <div class="fg"><label>검출 방법</label><input id="cf-detmethod" placeholder="예: 치수 검사, SPC"></div>
+        <div class="fg"></div>
+      </div>
+      <div class="fgrid g2" style="margin-top:0">
+        <div class="fg"><label>예방 조치 (Preventive Action)</label><input id="cf-prev" placeholder="예: 설계 검토, 공차 조정"></div>
+        <div class="fg"><label>시정 조치 (Corrective Action)</label><input id="cf-corr" placeholder="예: 재작업, 불량 격리"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="toggleForm('conn')">취소</button>
+        <button class="btn-save" onclick="saveConn()">저장</button>
+      </div>
+    </div>`;
+  }
+  h+=`<table class="result-table"><thead><tr><th>치수ID</th><th>치수명</th><th>공칭/공차</th><th>부품</th><th>기능명</th><th>CR</th><th>중요도</th><th>FM</th><th></th></tr></thead><tbody>`;
+  const dO2=DIMS.map(d=>`<option value="${d.id}">${d.id} — ${d.name}</option>`).join('');
+  const cO2=CRS.map(c=>`<option value="${c.id}">${c.id} — ${c.desc.substring(0,20)}…</option>`).join('');
+  const fO2=FMS.map(f=>`<option value="${f.id}">${f.id} — ${f.name}</option>`).join('');
+  DB.forEach((r,i)=>{
+    const d=dimById(r.dimId);
+    if(editingConn===i){
+      h+=`<tr class="row-edit-form"><td colspan="9"><div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">치수 *</div>
+          <select class="inline-select" id="ec-dim" onchange="ecFillDim()"><option value="">선택</option>${dO2.replace(`value="${r.dimId}"`,`value="${r.dimId}" selected`)}</select></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">기능 ID</div><input class="inline-input" id="ec-fid" value="${r.fId||''}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">기능명 *</div><input class="inline-input" id="ec-fn" value="${r.fName}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">기능유형</div><input class="inline-input" id="ec-ft" value="${r.fType||''}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">기능설명</div><input class="inline-input" id="ec-fd" value="${(r.fDesc||'').replace(/"/g,'&quot;')}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">CR ID *</div>
+          <select class="inline-select" id="ec-cr"><option value="">선택</option>${cO2.replace(`value="${r.crId}"`,`value="${r.crId}" selected`)}</select></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">중요도</div>
+          <select class="inline-select" id="ec-imp">
+            <option${r.imp==='필수'?' selected':''}>필수</option>
+            <option${r.imp==='중요'?' selected':''}>중요</option>
+            <option${r.imp==='보통'?' selected':''}>보통</option>
+          </select></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">FM ID</div>
+          <select class="inline-select" id="ec-fm"><option value="">없음</option>${fO2.replace(`value="${r.fmId}"`,`value="${r.fmId}" selected`)}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 3fr;gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">규격</div><input class="inline-input" id="ec-std" value="${r.std||''}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">발생도 Occ (1~10)</div><input class="inline-input" id="ec-occ" type="number" min="1" max="10" value="${r.occ||''}" style="font-family:var(--font-mono)"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">검출도 Det (1~10)</div><input class="inline-input" id="ec-det" type="number" min="1" max="10" value="${r.det||''}" style="font-family:var(--font-mono)"></div>
+        <div style="grid-column:span 2"><div style="font-size:10px;color:var(--text3);margin-bottom:3px">검출 방법</div><input class="inline-input" id="ec-detmethod" value="${r.detMethod||''}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">예방 조치 (Preventive Action)</div><input class="inline-input" id="ec-prev" value="${(r.prevAction||'').replace(/&quot;/g,'&quot;').replace(/"/g,'&quot;')}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">시정 조치 (Corrective Action)</div><input class="inline-input" id="ec-corr" value="${(r.corrAction||'').replace(/"/g,'&quot;')}"></div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn-update" onclick="updateConn(${i})">수정 저장</button><button class="btn-editcancel" onclick="editingConn=-1;renderDBSub('conn')">취소</button></div>
+      </td></tr>`;
+    } else {
+      const fm_r=fmById(r.fmId); const sev_r=fm_r?.sev||0;
+      const occ_r=r.occ||0; const det_r=r.det||0;
+      const rpn_r=sev_r&&occ_r&&det_r?sev_r*occ_r*det_r:0;
+      const rpnC_r=rpn_r>=200?'rpn-hi':rpn_r>=100?'rpn-md':rpn_r>0?'rpn-lo':'rpn-na';
+      const odC_r=(v)=>v>=8?'od-hi':v>=5?'od-md':v>0?'od-lo':'';
+      h+=`<tr><td style="font-family:var(--font-mono);font-size:10px">${r.dimId}</td>
+      <td style="font-size:11px">${d?d.name:r.dimId}</td>
+      <td style="font-size:11px">${d?d.part:'—'}</td>
+      <td style="font-size:11px">${r.fName}</td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);color:var(--purple)">${r.crId}</span></td>
+      <td>${ib(r.imp)}</td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);color:var(--red)">${r.fmId||'—'}</span></td>
+      <td style="text-align:center"><span class="occ-det-badge ${odC_r(sev_r)}">${sev_r||'—'}</span></td>
+      <td style="text-align:center"><span class="occ-det-badge ${odC_r(occ_r)}">${occ_r||'—'}</span></td>
+      <td style="text-align:center"><span class="occ-det-badge ${odC_r(det_r)}">${det_r||'—'}</span></td>
+      <td style="text-align:center"><span class="rpn-badge ${rpnC_r}">${rpn_r||'—'}</span></td>
+      <td style="font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.prevAction||''}">${r.prevAction||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="editingConn=${i};renderDBSub('conn')" title="수정">✎</button>
+        <button class="del-btn" onclick="delConn(${i})">✕</button>
+      </td></tr>`;
+    }
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
+function ecFillDim(){
+  const id=document.getElementById('ec-dim')?.value;
+  const d=dimById(id); if(!d) return;
+}
+
+function updateConn(i){
+  const dimId=document.getElementById('ec-dim').value;
+  const fName=document.getElementById('ec-fn').value.trim();
+  const crId=document.getElementById('ec-cr').value;
+  if(!dimId||!fName||!crId){ alert('치수, 기능명, CR ID는 필수입니다.'); return; }
+  const ec_occ = parseInt(document.getElementById('ec-occ')?.value)||0;
+  const ec_det = parseInt(document.getElementById('ec-det')?.value)||0;
+  DB[i]={...DB[i],dimId,fId:document.getElementById('ec-fid').value.trim(),fName,
+    fDesc:document.getElementById('ec-fd').value.trim(),
+    fType:document.getElementById('ec-ft').value.trim(),
+    crId,imp:document.getElementById('ec-imp').value,
+    std:document.getElementById('ec-std').value.trim(),
+    fmId:document.getElementById('ec-fm').value,
+    occ:ec_occ||undefined, det:ec_det||undefined,
+    prevAction:document.getElementById('ec-prev')?.value.trim()||undefined,
+    corrAction:document.getElementById('ec-corr')?.value.trim()||undefined,
+    detMethod:document.getElementById('ec-detmethod')?.value.trim()||undefined,
+  };
+  editingConn=-1;
+  if(selectedPart) drawTree(selectedPart);
+  renderDBSub('conn'); renderCETree(); if(currentTab==='fmea') renderFMEATable(); notify('연결이 수정되었습니다'); saveToStorage();
+}
+
+function fillConnDim(){
+  const id=document.getElementById('cf-dim')?.value;
+  const d=dimById(id); if(!d) return;
+  document.getElementById('cf-did').value=d.id;
+  document.getElementById('cf-spec').value=`${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)}`;
+  document.getElementById('cf-ut').value=`${d.unit} / ${d.type}`;
+  document.getElementById('cf-part').value=d.part;
+  document.getElementById('cf-mat').value=d.mat;
+}
+
+function saveConn(){
+  const dimId=document.getElementById('cf-dim').value;
+  const fName=document.getElementById('cf-fn').value.trim();
+  const crId=document.getElementById('cf-cr').value;
+  if(!dimId||!fName||!crId){ alert('치수, 기능명, CR ID는 필수입니다.'); return; }
+  const cf_occ = parseInt(document.getElementById('cf-occ')?.value)||0;
+  const cf_det = parseInt(document.getElementById('cf-det')?.value)||0;
+  DB.push({dimId,fId:document.getElementById('cf-fid').value.trim(),fName,
+    fDesc:document.getElementById('cf-fd').value.trim(),
+    fType:document.getElementById('cf-ft').value.trim(),
+    crId,imp:document.getElementById('cf-imp').value,
+    std:document.getElementById('cf-std').value.trim(),
+    fmId:document.getElementById('cf-fm').value,
+    occ:cf_occ||undefined, det:cf_det||undefined,
+    prevAction:document.getElementById('cf-prev')?.value.trim()||undefined,
+    corrAction:document.getElementById('cf-corr')?.value.trim()||undefined,
+    detMethod:document.getElementById('cf-detmethod')?.value.trim()||undefined,
+  });
+  showForms.conn=false;
+  if(selectedPart) drawTree(selectedPart);
+  renderDBSub('conn'); renderCETree(); if(currentTab==='fmea') renderFMEATable(); notify('연결이 추가되었습니다'); saveToStorage();
+}
+
+function delConn(i){
+  if(!confirm('삭제하시겠습니까?')) return;
+  DB.splice(i,1);
+  if(selectedPart) drawTree(selectedPart);
+  renderDBSub('conn'); renderCETree(); if(currentTab==='fmea') renderFMEATable(); notify('삭제되었습니다'); saveToStorage();
+}
+
+let editingDim = -1;
+
+function buildDimsHTML(){
+  let h=`<button class="add-btn" onclick="toggleForm('dims')">${showForms.dims?'▲ 접기':'+ 새 치수 등록'}</button>`;
+  if(showForms.dims){
+    h+=`<div class="form-card">
+      <div class="fgrid g4" style="margin-bottom:8px">
+        <div class="fg"><label>치수 ID *</label><input id="dd-id" placeholder="D-020"></div>
+        <div class="fg"><label>치수명 *</label><input id="dd-name" placeholder="스프링 자유길이"></div>
+        <div class="fg"><label>부품 ID</label><input id="dd-pid" placeholder="P-008"></div>
+        <div class="fg"><label>부품명 *</label><input id="dd-part" placeholder="스프링 (Spring)"></div>
+      </div>
+      <div class="fgrid g4" style="margin-bottom:8px">
+        <div class="fg"><label>공칭값 *</label><input id="dd-nom" type="number" placeholder="45.0"></div>
+        <div class="fg"><label>+공차 *</label><input id="dd-tolp" type="number" placeholder="0.5"></div>
+        <div class="fg"><label>-공차 *</label><input id="dd-tolm" type="number" placeholder="0.5"></div>
+        <div class="fg"><label>단위 *</label><input id="dd-unit" placeholder="mm / μm / %"></div>
+      </div>
+      <div class="fgrid g3">
+        <div class="fg"><label>치수유형</label><select id="dd-type"><option>끼워맞춤</option><option>구조</option><option>밀봉</option><option>체결</option><option>기능</option><option>조립</option><option>정밀도</option><option>내구</option><option>표면</option><option>GD&T</option><option>외형</option></select></div>
+        <div class="fg"><label>재질</label><input id="dd-mat" placeholder="SCM440, 알루미늄…"></div>
+        <div class="fg"><label>레벨</label><select id="dd-lv"><option value="1">1 — 시스템</option><option value="2">2 — 어셈블리</option><option value="3" selected>3 — 부품</option></select></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="toggleForm('dims')">취소</button>
+        <button class="btn-save" onclick="saveDim()">저장</button>
+      </div>
+    </div>`;
+  }
+  const typeOpts = ['끼워맞춤','구조','밀봉','체결','기능','조립','정밀도','내구','표면','GD&T','외형'];
+  h+=`<table class="result-table"><thead><tr><th>ID</th><th>치수명</th><th>공칭/공차</th><th>단위</th><th>유형</th><th>부품명</th><th>재질</th><th>Lv</th><th style="width:64px"></th></tr></thead><tbody>`;
+  DIMS.forEach((d,i)=>{
+    if(editingDim===i){
+      const tOpts = typeOpts.map(t=>`<option${d.type===t?' selected':''}>${t}</option>`).join('');
+      h+=`<tr class="row-edit-form"><td colspan="9"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">치수 ID</div><input class="inline-input" id="edd-id" value="${d.id}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">치수명 *</div><input class="inline-input" id="edd-name" value="${d.name}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">부품 ID</div><input class="inline-input" id="edd-pid" value="${d.pid||''}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">부품명 *</div><input class="inline-input" id="edd-part" value="${d.part}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">공칭값 *</div><input class="inline-input" id="edd-nom" type="number" value="${d.nom}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">+공차 *</div><input class="inline-input" id="edd-tolp" type="number" value="${d.tolP}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">-공차 *</div><input class="inline-input" id="edd-tolm" type="number" value="${d.tolM}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">단위 *</div><input class="inline-input" id="edd-unit" value="${d.unit}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">치수유형</div><select class="inline-select" id="edd-type">${tOpts}</select></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">재질</div><input class="inline-input" id="edd-mat" value="${d.mat||''}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">레벨</div><select class="inline-select" id="edd-lv"><option value="1"${d.lv==1?' selected':''}>1 — 시스템</option><option value="2"${d.lv==2?' selected':''}>2 — 어셈블리</option><option value="3"${d.lv==3?' selected':''}>3 — 부품</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn-update" onclick="updateDim(${i})">수정 저장</button><button class="btn-editcancel" onclick="editingDim=-1;renderDBSub('dims')">취소</button></div>
+      </td></tr>`;
+    } else {
+      h+=`<tr><td style="font-family:var(--font-mono);font-size:10px">${d.id}</td>
+      <td style="font-size:11px">${d.name}</td>
+      <td style="font-family:var(--font-mono);font-size:10px">${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)}</td>
+      <td style="font-size:11px">${d.unit}</td>
+      <td style="font-size:11px;color:var(--text2)">${d.type}</td>
+      <td style="font-size:11px">${d.part}</td>
+      <td style="font-size:11px;color:var(--text3)">${d.mat}</td>
+      <td style="font-size:11px">${d.lv}</td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="editingDim=${i};editingCR=-1;editingFM=-1;renderDBSub('dims')" title="수정">✎</button>
+        <button class="del-btn" onclick="delDim(${i})">✕</button>
+      </td></tr>`;
+    }
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
+function updateDim(i){
+  const name=document.getElementById('edd-name').value.trim();
+  const part=document.getElementById('edd-part').value.trim();
+  const nom=parseFloat(document.getElementById('edd-nom').value);
+  const tolP=parseFloat(document.getElementById('edd-tolp').value)||0;
+  const tolM=parseFloat(document.getElementById('edd-tolm').value)||0;
+  const unit=document.getElementById('edd-unit').value.trim();
+  if(!name||!part||isNaN(nom)||!unit){ alert('치수명, 부품명, 공칭값, 단위는 필수입니다.'); return; }
+  const newId=document.getElementById('edd-id').value.trim();
+  const oldId=DIMS[i].id;
+  if(newId!==oldId && DIMS.find((d,idx)=>d.id===newId&&idx!==i)){ alert(`"${newId}"가 이미 존재합니다.`); return; }
+  // ID 변경 시 DB 연결도 업데이트
+  if(newId!==oldId){ DB.forEach(r=>{ if(r.dimId===oldId) r.dimId=newId; }); }
+  DIMS[i]={...DIMS[i],id:newId,name,part,pid:document.getElementById('edd-pid').value.trim(),
+    nom,tolP,tolM,unit,type:document.getElementById('edd-type').value,
+    mat:document.getElementById('edd-mat').value.trim(),lv:parseInt(document.getElementById('edd-lv').value)};
+  editingDim=-1; rebuildSelects(); buildPartTree(); renderDBSub('dims');
+  if(selectedPart) drawTree(selectedPart);
+  notify('치수가 수정되었습니다'); saveToStorage();
+}
+
+function saveDim(){
+  const id=document.getElementById('dd-id').value.trim();
+  const name=document.getElementById('dd-name').value.trim();
+  const part=document.getElementById('dd-part').value.trim();
+  const nom=parseFloat(document.getElementById('dd-nom').value);
+  const tolP=parseFloat(document.getElementById('dd-tolp').value)||0;
+  const tolM=parseFloat(document.getElementById('dd-tolm').value)||0;
+  const unit=document.getElementById('dd-unit').value.trim();
+  if(!id||!name||!part||isNaN(nom)||!unit){ alert('ID, 치수명, 부품명, 공칭값, 단위는 필수입니다.'); return; }
+  if(DIMS.find(d=>d.id===id)){ alert(`"${id}"가 이미 존재합니다.`); return; }
+  DIMS.push({lv:parseInt(document.getElementById('dd-lv').value),
+    pid:document.getElementById('dd-pid').value.trim(),part,
+    mat:document.getElementById('dd-mat').value.trim(),id,name,nom,tolP,tolM,unit,
+    type:document.getElementById('dd-type').value});
+  showForms.dims=false; rebuildSelects(); buildPartTree(); renderDBSub('dims');
+  notify('치수가 등록되었습니다'); saveToStorage();
+}
+
+function delDim(i){
+  if(DB.some(r=>r.dimId===DIMS[i].id)){ alert('이 치수와 연결된 DB 항목이 있습니다.\n연결 관리에서 먼저 삭제하세요.'); return; }
+  if(!confirm('삭제하시겠습니까?')) return;
+  DIMS.splice(i,1); rebuildSelects(); buildPartTree(); renderDBSub('dims');
+  notify('삭제되었습니다'); saveToStorage();
+}
+
+let editingCR = -1;
+
+function buildCRsHTML(){
+  let h=`<button class="add-btn" onclick="toggleForm('crs')">${showForms.crs?'▲ 접기':'+ 새 CR 등록'}</button>`;
+  if(showForms.crs){
+    h+=`<div class="form-card">
+      <div class="fgrid g3" style="margin-bottom:8px">
+        <div class="fg"><label>CR ID *</label><input id="dc-id" placeholder="CR-012"></div>
+        <div class="fg" style="grid-column:span 2"><label>고객 요구사항 *</label><input id="dc-desc" placeholder="스프링 복원력 ≥ 50N"></div>
+      </div>
+      <div class="fgrid g4" style="margin-bottom:8px">
+        <div class="fg"><label>분류</label><input id="dc-cat" placeholder="성능, 밀봉, NVH…"></div>
+        <div class="fg"><label>중요도</label><select id="dc-imp"><option>필수</option><option>중요</option><option>보통</option></select></div>
+        <div class="fg"><label>측정 방법</label><input id="dc-method" placeholder="토크 렌치 측정"></div>
+        <div class="fg"><label>합격 기준</label><input id="dc-crit" placeholder="50N 이상"></div>
+      </div>
+      <div class="fgrid g2">
+        <div class="fg"><label>관련 규격</label><input id="dc-std" placeholder="KS B 2001"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="toggleForm('crs')">취소</button>
+        <button class="btn-save" onclick="saveCR()">저장</button>
+      </div>
+    </div>`;
+  }
+  h+=`<table class="result-table"><thead><tr><th>CR ID</th><th>고객 요구사항</th><th>분류</th><th>중요도</th><th>합격 기준</th><th>규격</th><th style="width:64px"></th></tr></thead><tbody>`;
+  CRS.forEach((c,i)=>{
+    if(editingCR===i){
+      h+=`<tr class="row-edit-form"><td colspan="7"><div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">CR ID</div><input class="inline-input" id="ecr-id" value="${c.id}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">고객 요구사항 *</div><input class="inline-input" id="ecr-desc" value="${c.desc.replace(/"/g,'&quot;')}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">분류</div><input class="inline-input" id="ecr-cat" value="${c.cat||''}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">중요도</div>
+          <select class="inline-select" id="ecr-imp">
+            <option${c.imp==='필수'?' selected':''}>필수</option>
+            <option${c.imp==='중요'?' selected':''}>중요</option>
+            <option${c.imp==='보통'?' selected':''}>보통</option>
+          </select></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">측정 방법</div><input class="inline-input" id="ecr-method" value="${c.method||''}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">합격 기준</div><input class="inline-input" id="ecr-crit" value="${c.criteria||''}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 3fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">관련 규격</div><input class="inline-input" id="ecr-std" value="${c.std||''}"></div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn-update" onclick="updateCR(${i})">수정 저장</button><button class="btn-editcancel" onclick="editingCR=-1;renderDBSub('crs')">취소</button></div>
+      </td></tr>`;
+    } else {
+      h+=`<tr><td style="font-family:var(--font-mono);font-size:10px">${c.id}</td>
+      <td style="font-size:11px">${c.desc}</td>
+      <td style="font-size:11px;color:var(--text2)">${c.cat}</td>
+      <td>${ib(c.imp)}</td>
+      <td style="font-size:11px">${c.criteria}</td>
+      <td style="font-size:10px;color:var(--text3)">${c.std||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="editingCR=${i};editingDim=-1;editingFM=-1;renderDBSub('crs')" title="수정">✎</button>
+        <button class="del-btn" onclick="delCR(${i})">✕</button>
+      </td></tr>`;
+    }
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
+function updateCR(i){
+  const desc=document.getElementById('ecr-desc').value.trim();
+  if(!desc){ alert('고객 요구사항은 필수입니다.'); return; }
+  const newId=document.getElementById('ecr-id').value.trim();
+  const oldId=CRS[i].id;
+  if(newId!==oldId && CRS.find((c,idx)=>c.id===newId&&idx!==i)){ alert(`"${newId}"가 이미 존재합니다.`); return; }
+  if(newId!==oldId){ DB.forEach(r=>{ if(r.crId===oldId) r.crId=newId; }); }
+  CRS[i]={...CRS[i],id:newId,desc,cat:document.getElementById('ecr-cat').value.trim(),
+    imp:document.getElementById('ecr-imp').value,
+    method:document.getElementById('ecr-method').value.trim(),
+    criteria:document.getElementById('ecr-crit').value.trim(),
+    std:document.getElementById('ecr-std').value.trim()};
+  editingCR=-1; rebuildSelects(); renderDBSub('crs');
+  notify('CR이 수정되었습니다'); saveToStorage();
+}
+
+function saveCR(){
+  const id=document.getElementById('dc-id').value.trim();
+  const desc=document.getElementById('dc-desc').value.trim();
+  if(!id||!desc){ alert('CR ID와 요구사항은 필수입니다.'); return; }
+  if(CRS.find(c=>c.id===id)){ alert(`"${id}"가 이미 존재합니다.`); return; }
+  CRS.push({id,desc,cat:document.getElementById('dc-cat').value.trim(),
+    imp:document.getElementById('dc-imp').value,
+    method:document.getElementById('dc-method').value.trim(),
+    criteria:document.getElementById('dc-crit').value.trim(),
+    std:document.getElementById('dc-std').value.trim()});
+  showForms.crs=false; rebuildSelects(); renderDBSub('crs');
+  notify('CR이 등록되었습니다'); saveToStorage();
+}
+
+function delCR(i){
+  if(DB.some(r=>r.crId===CRS[i].id)){ alert('이 CR과 연결된 DB 항목이 있습니다.\n연결 관리에서 먼저 삭제하세요.'); return; }
+  if(!confirm('삭제하시겠습니까?')) return;
+  CRS.splice(i,1); rebuildSelects(); renderDBSub('crs');
+  notify('삭제되었습니다'); saveToStorage();
+}
+
+let editingFM = -1;
+
+function buildFMsHTML(){
+  let h=`<button class="add-btn" onclick="toggleForm('fms')">${showForms.fms?'▲ 접기':'+ 새 FM 등록'}</button>`;
+  if(showForms.fms){
+    const cO=CRS.map(c=>`<option value="${c.id}">${c.id} — ${c.desc.substring(0,20)}…</option>`).join('');
+    h+=`<div class="form-card">
+      <div class="fgrid g4" style="margin-bottom:8px">
+        <div class="fg"><label>FM ID *</label><input id="df-id" placeholder="FM-012"></div>
+        <div class="fg"><label>Failure Mode명 *</label><input id="df-name" placeholder="복원력 부족"></div>
+        <div class="fg"><label>FM 유형</label><input id="df-type" placeholder="기능 불량"></div>
+        <div class="fg"><label>심각도 (1~10) *</label><input id="df-sev" type="number" min="1" max="10" placeholder="8"></div>
+      </div>
+      <div class="fgrid g3">
+        <div class="fg"><label>불만족 CR</label><select id="df-cr"><option value="">선택</option>${cO}</select></div>
+        <div class="fg" style="grid-column:span 2"><label>FM 설명</label><input id="df-desc" placeholder="고장 발생 시 영향 및 조건"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="toggleForm('fms')">취소</button>
+        <button class="btn-save" onclick="saveFM()">저장</button>
+      </div>
+    </div>`;
+  }
+  const cOAll=CRS.map(c=>`<option value="${c.id}">${c.id} — ${c.desc.substring(0,18)}…</option>`).join('');
+  h+=`<table class="result-table"><thead><tr><th>FM ID</th><th>Failure Mode</th><th>유형</th><th>심각도</th><th>불만족 CR</th><th>FM 설명</th><th style="width:64px"></th></tr></thead><tbody>`;
+  FMS.forEach((f,i)=>{
+    if(editingFM===i){
+      h+=`<tr class="row-edit-form"><td colspan="7"><div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">FM ID</div><input class="inline-input" id="efm-id" value="${f.id}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">Failure Mode명 *</div><input class="inline-input" id="efm-name" value="${f.name}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">FM 유형</div><input class="inline-input" id="efm-type" value="${f.type||''}"></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">심각도 (1~10) *</div><input class="inline-input" id="efm-sev" type="number" min="1" max="10" value="${f.sev}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">불만족 CR</div>
+          <select class="inline-select" id="efm-cr"><option value="">선택</option>${cOAll.replace(`value="${f.crId}"`,`value="${f.crId}" selected`)}</select></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">FM 설명</div><input class="inline-input" id="efm-desc" value="${(f.desc||'').replace(/"/g,'&quot;')}"></div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn-update" onclick="updateFM(${i})">수정 저장</button><button class="btn-editcancel" onclick="editingFM=-1;renderDBSub('fms')">취소</button></div>
+      </td></tr>`;
+    } else {
+      h+=`<tr><td style="font-family:var(--font-mono);font-size:10px">${f.id}</td>
+      <td style="font-size:11px;font-weight:500">${f.name}</td>
+      <td style="font-size:11px;color:var(--text2)">${f.type}</td>
+      <td>${sb(f.sev)}</td>
+      <td style="font-size:10px;font-family:var(--font-mono);color:var(--purple)">${f.crId||'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${f.desc}</td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="editingFM=${i};editingDim=-1;editingCR=-1;renderDBSub('fms')" title="수정">✎</button>
+        <button class="del-btn" onclick="delFM(${i})">✕</button>
+      </td></tr>`;
+    }
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
+function updateFM(i){
+  const name=document.getElementById('efm-name').value.trim();
+  const sev=parseInt(document.getElementById('efm-sev').value)||0;
+  if(!name||sev<1||sev>10){ alert('FM명과 심각도(1~10)는 필수입니다.'); return; }
+  const newId=document.getElementById('efm-id').value.trim();
+  const oldId=FMS[i].id;
+  if(newId!==oldId && FMS.find((f,idx)=>f.id===newId&&idx!==i)){ alert(`"${newId}"가 이미 존재합니다.`); return; }
+  if(newId!==oldId){ DB.forEach(r=>{ if(r.fmId===oldId) r.fmId=newId; }); }
+  FMS[i]={...FMS[i],id:newId,name,type:document.getElementById('efm-type').value.trim(),
+    sev,crId:document.getElementById('efm-cr').value,
+    desc:document.getElementById('efm-desc').value.trim()};
+  editingFM=-1; rebuildSelects(); renderDBSub('fms');
+  notify('FM이 수정되었습니다'); saveToStorage();
+}
+
+function saveFM(){
+  const id=document.getElementById('df-id').value.trim();
+  const name=document.getElementById('df-name').value.trim();
+  const sev=parseInt(document.getElementById('df-sev').value)||0;
+  if(!id||!name||sev<1||sev>10){ alert('FM ID, FM명, 심각도(1~10)는 필수입니다.'); return; }
+  if(FMS.find(f=>f.id===id)){ alert(`"${id}"가 이미 존재합니다.`); return; }
+  FMS.push({id,name,desc:document.getElementById('df-desc').value.trim(),
+    type:document.getElementById('df-type').value.trim(),sev,
+    crId:document.getElementById('df-cr').value});
+  showForms.fms=false; rebuildSelects(); renderDBSub('fms');
+  notify('FM이 등록되었습니다'); saveToStorage();
+}
+
+function delFM(i){
+  if(DB.some(r=>r.fmId===FMS[i].id)){ alert('이 FM과 연결된 DB 항목이 있습니다.\n연결 관리에서 먼저 삭제하세요.'); return; }
+  if(!confirm('삭제하시겠습니까?')) return;
+  FMS.splice(i,1); rebuildSelects(); renderDBSub('fms');
+  notify('삭제되었습니다'); saveToStorage();
+}
+
+function toggleForm(t){ showForms[t]=!showForms[t]; renderDBSub(t); }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   FUNCTION ANALYSIS STRUCTURE (FAS) — IQRM Style
+═══════════════════════════════════════════════════════════════ */
+let fasExpandedParts = new Set();   // part IDs that are expanded
+let fasSelectedFunc = null;         // {dimId, fId} of selected func
+let fasEditingFunc = null;          // {dimId, fId} being edited
+let fasAddingToPart = null;         // part ID for new func
+
+function renderFAS(){
+  // Build part filter dropdown
+  const sel = document.getElementById('fas-filter-part');
+  if(sel){
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">전체 부품</option>' +
+      PARTS.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+    sel.value = prev;
+  }
+
+  const filterPart = document.getElementById('fas-filter-part')?.value || '';
+  const partsToShow = filterPart ? PARTS.filter(p=>p.id===filterPart) : PARTS;
+
+  // ── Left column: part hierarchy ──
+  const left = document.getElementById('fas-left');
+  left.innerHTML = partsToShow.map(p=>{
+    const cnt = DB.filter(r=>p.dims.includes(r.dimId)).length;
+    const isOpen = fasExpandedParts.has(p.id);
+    return `<div class="fas-part-node${fasExpandedParts.has(p.id)||filterPart?' active':''}"
+      id="fas-pnode-${p.id}"
+      style="padding-left:${8+(p.lv-1)*12}px"
+      onclick="fasPToggle('${p.id}')">
+      <span class="fpn-dot" style="background:${p.color}"></span>
+      <span class="fpn-label">${p.label}</span>
+      ${cnt?`<span style="font-size:9px;color:var(--text3);background:var(--bg3);padding:1px 5px;border-radius:99px;margin-right:4px">${cnt}</span>`:''}
+      <span class="fpn-arrow${isOpen||filterPart?' open':''}">▶</span>
+    </div>`;
+  }).join('');
+
+  // ── Right column: functions ──
+  const right = document.getElementById('fas-right');
+  let rightHTML = '';
+
+  partsToShow.forEach((p, pi)=>{
+    const isOpen = fasExpandedParts.has(p.id) || !!filterPart;
+    const partRows = buildFASRows(p);
+
+    rightHTML += `<div class="fas-part-section" id="fas-rsec-${p.id}" style="${pi===0?'border-top:none;margin-top:0;padding-top:0':''}">`;
+    rightHTML += `<div class="fas-part-section-label">
+      <span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block"></span>
+      <span>${p.label}</span>
+      ${!isOpen?`<span style="color:var(--text3);font-weight:400">(클릭하여 펼치기)</span>`:''}
+    </div>`;
+
+    if(isOpen){
+      if(partRows.length === 0){
+        rightHTML += `<div style="padding:6px 12px;font-size:11px;color:var(--text3)">등록된 기능 없음</div>`;
+      } else {
+        partRows.forEach(row=>{
+          const isEditingThis = fasEditingFunc &&
+            fasEditingFunc.dimId===row.dimId && fasEditingFunc.fId===row.fId;
+          const isSelectedThis = fasSelectedFunc &&
+            fasSelectedFunc.dimId===row.dimId && fasSelectedFunc.fId===row.fId;
+          const cr = crById(row.crId);
+          const fm = fmById(row.fmId);
+          const dim = dimById(row.dimId);
+
+          rightHTML += `<div class="fas-func-group" id="fas-fg-${row.dimId}-${row.fId}">
+            <div class="fas-func-header">
+              <div style="position:relative;display:flex;align-items:center;flex:1;min-width:0">
+                <span class="fas-dim-tag">${row.dimId}</span>
+                <div class="fas-func-box${isSelectedThis?' selected':''}${isEditingThis?' editing':''}"
+                  onclick="fasFuncClick('${row.dimId}','${row.fId}')">
+                  <span class="ffb-name" title="${row.fName}">${row.fName}</span>
+                  <div class="ffb-badges">
+                    ${row.fType?`<span class="ffb-type">${row.fType}</span>`:''}
+                    <span class="badge b-${row.imp}" style="font-size:9px;padding:1px 5px">${row.imp}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="fas-right-tags">
+                ${cr?`<span class="fas-tag fas-tag-cr" title="${cr.desc}" onclick="jumpCR('${row.crId}')">${row.crId}</span>`:''}
+                ${fm?`<span class="fas-tag fas-tag-fm" title="${fm.name}" onclick="jumpFM('${row.fmId}')">${row.fmId}</span>`:''}
+              </div>
+            </div>`;
+
+          if(isEditingThis){
+            const allDims = DIMS.filter(d=>p.dims.includes(d.id));
+            const dimOpts = allDims.map(d=>`<option value="${d.id}"${d.id===row.dimId?' selected':''}>${d.id} — ${d.name}</option>`).join('');
+            const crOpts = CRS.map(c=>`<option value="${c.id}"${c.id===row.crId?' selected':''}>${c.id} — ${c.desc.substring(0,22)}…</option>`).join('');
+            const fmOpts = FMS.map(f=>`<option value="${f.id}"${f.id===row.fmId?' selected':''}>${f.id} — ${f.name}</option>`).join('');
+            const typeList = ['끼워맞춤','구조','밀봉','체결','기능','조립','정밀도','내구','표면','NVH','GD&T'];
+            const typeOpts = typeList.map(t=>`<option${t===row.fType?' selected':''}>${t}</option>`).join('');
+            const impOpts = ['필수','중요','보통'].map(v=>`<option${v===row.imp?' selected':''}>${v}</option>`).join('');
+
+            rightHTML += `<div class="fas-edit-form" id="fas-ef-${row.dimId}-${row.fId}">
+              <div class="fas-edit-grid">
+                <div class="fas-fld"><label>치수</label><select id="fe-dim">${dimOpts}</select></div>
+                <div class="fas-fld"><label>기능 ID</label><input id="fe-fid" value="${row.fId||''}"></div>
+                <div class="fas-fld"><label>기능명 *</label><input id="fe-fname" value="${row.fName}"></div>
+              </div>
+              <div class="fas-edit-grid4">
+                <div class="fas-fld"><label>기능유형</label><select id="fe-ftype">${typeOpts}</select></div>
+                <div class="fas-fld"><label>중요도</label><select id="fe-imp">${impOpts}</select></div>
+                <div class="fas-fld"><label>CR</label><select id="fe-cr"><option value="">없음</option>${crOpts}</select></div>
+                <div class="fas-fld"><label>FM</label><select id="fe-fm"><option value="">없음</option>${fmOpts}</select></div>
+              </div>
+              <div class="fas-fld" style="margin-bottom:8px"><label>기능설명</label>
+                <input id="fe-fdesc" value="${(row.fDesc||'').replace(/"/g,'&quot;')}" style="width:100%"></div>
+              <div class="fas-fld" style="margin-bottom:8px"><label>규격</label>
+                <input id="fe-std" value="${row.std||''}" style="width:200px"></div>
+              <div class="fas-edit-actions">
+                <button class="btn-fas-save" onclick="fasSaveEdit()">저장</button>
+                <button class="btn-fas-del" onclick="fasDeleteFunc()">삭제</button>
+                <button class="btn-fas-cancel" onclick="fasEditingFunc=null;renderFAS()">취소</button>
+              </div>
+            </div>`;
+          }
+
+          rightHTML += `</div>`;
+        });
+      }
+
+      // Add new function button
+      rightHTML += `<button class="fas-add-func-btn" onclick="fasStartAddFunc('${p.id}')">＋ 기능 추가</button>`;
+
+      if(fasAddingToPart === p.id){
+        const allDims = DIMS.filter(d=>p.dims.includes(d.id));
+        const dimOpts = allDims.map(d=>`<option value="${d.id}">${d.id} — ${d.name}</option>`).join('');
+        const crOpts = CRS.map(c=>`<option value="${c.id}">${c.id} — ${c.desc.substring(0,22)}…</option>`).join('');
+        const fmOpts = FMS.map(f=>`<option value="${f.id}">${f.id} — ${f.name}</option>`).join('');
+        const typeList = ['끼워맞춤','구조','밀봉','체결','기능','조립','정밀도','내구','표면','NVH','GD&T'];
+        const typeOpts = typeList.map(t=>`<option>${t}</option>`).join('');
+
+        rightHTML += `<div class="fas-edit-form" style="border-color:var(--blue2)">
+          <div style="font-size:10px;font-weight:500;color:var(--blue);margin-bottom:8px">새 기능 추가 — ${p.label}</div>
+          <div class="fas-edit-grid">
+            <div class="fas-fld"><label>치수 *</label><select id="fna-dim">${dimOpts||'<option value="">치수 없음</option>'}</select></div>
+            <div class="fas-fld"><label>기능 ID</label><input id="fna-fid" placeholder="F-020"></div>
+            <div class="fas-fld"><label>기능명 *</label><input id="fna-fname" placeholder="기능명 입력"></div>
+          </div>
+          <div class="fas-edit-grid4">
+            <div class="fas-fld"><label>기능유형</label><select id="fna-ftype">${typeOpts}</select></div>
+            <div class="fas-fld"><label>중요도</label><select id="fna-imp"><option>필수</option><option>중요</option><option>보통</option></select></div>
+            <div class="fas-fld"><label>CR</label><select id="fna-cr"><option value="">없음</option>${crOpts}</select></div>
+            <div class="fas-fld"><label>FM</label><select id="fna-fm"><option value="">없음</option>${fmOpts}</select></div>
+          </div>
+          <div class="fas-fld" style="margin-bottom:8px"><label>기능설명</label>
+            <input id="fna-fdesc" placeholder="기능 상세 설명" style="width:100%"></div>
+          <div class="fas-fld" style="margin-bottom:8px"><label>규격</label>
+            <input id="fna-std" placeholder="ISO …" style="width:200px"></div>
+          <div class="fas-edit-actions">
+            <button class="btn-fas-save" style="background:var(--blue2)" onclick="fasAddNewFunc('${p.id}')">추가</button>
+            <button class="btn-fas-cancel" onclick="fasAddingToPart=null;renderFAS()">취소</button>
+          </div>
+        </div>`;
+      }
+    }
+
+    rightHTML += `</div>`;
+  });
+
+  right.innerHTML = rightHTML;
+
+  // Draw connector lines
+  drawFASLines(partsToShow);
+}
+
+function buildFASRows(p){
+  // Collect all DB rows for this part, deduplicate by dimId+fId
+  const rows = [];
+  const seen = new Set();
+  p.dims.forEach(dId=>{
+    DB.filter(r=>r.dimId===dId).forEach(r=>{
+      const key = r.dimId+'__'+r.fId;
+      if(!seen.has(key)){ seen.add(key); rows.push(r); }
+    });
+  });
+  return rows;
+}
+
+function fasPToggle(pid){
+  if(fasExpandedParts.has(pid)) fasExpandedParts.delete(pid);
+  else fasExpandedParts.add(pid);
+  fasEditingFunc = null; fasAddingToPart = null;
+  renderFAS();
+}
+
+function fasExpandAll(){
+  PARTS.forEach(p=>fasExpandedParts.add(p.id));
+  renderFAS();
+}
+function fasCollapseAll(){
+  fasExpandedParts.clear();
+  renderFAS();
+}
+
+function fasFuncClick(dimId, fId){
+  if(fasEditingFunc && fasEditingFunc.dimId===dimId && fasEditingFunc.fId===fId){
+    // toggle off
+    fasEditingFunc = null; fasSelectedFunc = null;
+  } else {
+    fasSelectedFunc = {dimId, fId};
+    fasEditingFunc = {dimId, fId};
+  }
+  renderFAS();
+}
+
+function fasSaveEdit(){
+  if(!fasEditingFunc) return;
+  const {dimId, fId} = fasEditingFunc;
+  const fName = document.getElementById('fe-fname')?.value.trim();
+  if(!fName){ alert('기능명은 필수입니다.'); return; }
+  const newDimId = document.getElementById('fe-dim')?.value;
+  const idx = DB.findIndex(r=>r.dimId===dimId && r.fId===fId);
+  if(idx >= 0){
+    DB[idx] = {...DB[idx],
+      dimId: newDimId || dimId,
+      fId: document.getElementById('fe-fid')?.value.trim() || fId,
+      fName,
+      fDesc: document.getElementById('fe-fdesc')?.value.trim() || '',
+      fType: document.getElementById('fe-ftype')?.value || '',
+      crId: document.getElementById('fe-cr')?.value || '',
+      imp: document.getElementById('fe-imp')?.value || '필수',
+      fmId: document.getElementById('fe-fm')?.value || '',
+      std: document.getElementById('fe-std')?.value.trim() || '',
+    };
+  }
+  fasEditingFunc = null; fasSelectedFunc = null;
+  if(selectedPart) drawTree(selectedPart);
+  renderFAS(); notify('기능이 수정되었습니다'); saveToStorage();
+}
+
+function fasDeleteFunc(){
+  if(!fasEditingFunc) return;
+  const {dimId, fId} = fasEditingFunc;
+  const row = DB.find(r=>r.dimId===dimId && r.fId===fId);
+  if(!confirm(`"${row?.fName||fId}" 기능을 삭제하시겠습니까?`)) return;
+  const idx = DB.findIndex(r=>r.dimId===dimId && r.fId===fId);
+  if(idx >= 0) DB.splice(idx,1);
+  fasEditingFunc = null; fasSelectedFunc = null;
+  if(selectedPart) drawTree(selectedPart);
+  renderFAS(); notify('기능이 삭제되었습니다'); saveToStorage();
+}
+
+function fasStartAddFunc(pid){
+  fasAddingToPart = pid;
+  fasEditingFunc = null; fasSelectedFunc = null;
+  fasExpandedParts.add(pid);
+  renderFAS();
+  setTimeout(()=>{
+    const el = document.getElementById('fna-fname');
+    if(el) el.focus();
+  }, 50);
+}
+
+function fasAddNewFunc(pid){
+  const p = PARTS.find(pp=>pp.id===pid);
+  const dimId = document.getElementById('fna-dim')?.value;
+  const fName = document.getElementById('fna-fname')?.value.trim();
+  if(!dimId || !fName){ alert('치수와 기능명은 필수입니다.'); return; }
+  const fId = document.getElementById('fna-fid')?.value.trim() ||
+    ('F-' + String(DB.length+1).padStart(3,'0'));
+  DB.push({
+    dimId, fId, fName,
+    fDesc: document.getElementById('fna-fdesc')?.value.trim() || '',
+    fType: document.getElementById('fna-ftype')?.value || '',
+    crId:  document.getElementById('fna-cr')?.value || '',
+    imp:   document.getElementById('fna-imp')?.value || '필수',
+    fmId:  document.getElementById('fna-fm')?.value || '',
+    std:   document.getElementById('fna-std')?.value.trim() || '',
+  });
+  fasAddingToPart = null;
+  if(selectedPart) drawTree(selectedPart);
+  rebuildSelects(); renderFAS(); notify('기능이 추가되었습니다'); saveToStorage();
+}
+
+function drawFASLines(partsToShow){
+  const body = document.getElementById('fas-body');
+  const left = document.getElementById('fas-left');
+  const right = document.getElementById('fas-right');
+  const cvs = document.getElementById('fas-canvas');
+  if(!cvs || !body) return;
+
+  const bw = body.scrollWidth, bh = body.scrollHeight;
+  cvs.width = bw; cvs.height = bh;
+  cvs.style.width = bw+'px'; cvs.style.height = bh+'px';
+
+  const ctx2 = cvs.getContext('2d');
+  ctx2.clearRect(0, 0, bw, bh);
+
+  const isDk = isDark();
+  const lineColor = isDk ? 'rgba(90,88,85,.6)' : 'rgba(0,0,0,.12)';
+  const activeColor = isDk ? '#5DCAA5' : '#1D9E75';
+
+  partsToShow.forEach(p=>{
+    const pNode = document.getElementById('fas-pnode-'+p.id);
+    const sec   = document.getElementById('fas-rsec-'+p.id);
+    if(!pNode || !sec) return;
+
+    const isOpen = fasExpandedParts.has(p.id) || !!document.getElementById('fas-filter-part')?.value;
+
+    const pRect = pNode.getBoundingClientRect();
+    const bRect = body.getBoundingClientRect();
+    const sRect = sec.getBoundingClientRect();
+
+    const px = pRect.right - bRect.left + body.scrollLeft;
+    const py = pRect.top + pRect.height/2 - bRect.top + body.scrollTop;
+
+    if(!isOpen){
+      // collapsed: single line to section label
+      const lx = sRect.left - bRect.left + body.scrollLeft;
+      const ly = sRect.top + 16 - bRect.top + body.scrollTop;
+      ctx2.strokeStyle = lineColor; ctx2.lineWidth = 1;
+      ctx2.setLineDash([3,3]);
+      ctx2.beginPath(); ctx2.moveTo(px, py);
+      ctx2.bezierCurveTo(px+30, py, lx-30, ly, lx, ly);
+      ctx2.stroke(); ctx2.setLineDash([]);
+      return;
+    }
+
+    // expanded: lines to each function box
+    const rows = buildFASRows(p);
+    rows.forEach(row=>{
+      const fg = document.getElementById(`fas-fg-${row.dimId}-${row.fId}`);
+      if(!fg) return;
+      const fRect = fg.getBoundingClientRect();
+      const fx = fRect.left - bRect.left + body.scrollLeft;
+      const fy = fRect.top + fRect.height/2 - bRect.top + body.scrollTop;
+
+      const isActive = fasSelectedFunc &&
+        fasSelectedFunc.dimId===row.dimId && fasSelectedFunc.fId===row.fId;
+
+      ctx2.strokeStyle = isActive ? activeColor : lineColor;
+      ctx2.lineWidth = isActive ? 1.5 : 1;
+      ctx2.setLineDash([]);
+      ctx2.beginPath();
+      ctx2.moveTo(px, py);
+      ctx2.bezierCurveTo(px+40, py, fx-40, fy, fx, fy);
+      ctx2.stroke();
+
+      // dot at right end of part node
+      ctx2.fillStyle = isActive ? activeColor : lineColor;
+      ctx2.beginPath();
+      ctx2.arc(px, py, 3, 0, Math.PI*2);
+      ctx2.fill();
+
+      // dot at left end of func box
+      ctx2.beginPath();
+      ctx2.arc(fx, fy, 3, 0, Math.PI*2);
+      ctx2.fill();
+    });
+  });
+}
+
+// Re-draw lines on scroll
+document.getElementById('fas-body')?.addEventListener('scroll', ()=>{
+  if(currentTab === 'fas'){
+    const filterPart = document.getElementById('fas-filter-part')?.value || '';
+    const partsToShow = filterPart ? PARTS.filter(p=>p.id===filterPart) : PARTS;
+    drawFASLines(partsToShow);
+  }
+});
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CAUSE & EFFECT TREE — HTML 기반 전체 자동 표시
+═══════════════════════════════════════════════════════════════ */
+let ceCollapsed = new Set();   /* 접힌 부품 ID Set */
+
+function renderCETree(){
+  const content = document.getElementById('ce-content');
+  const stat    = document.getElementById('ce-stat');
+  const filterSel = document.getElementById('ce-filter-part');
+  const search  = (document.getElementById('ce-search')?.value||'').trim().toLowerCase();
+  if(!content) return;
+
+  /* ── 부품 필터 드롭다운 갱신 ── */
+  if(filterSel){
+    const prev = filterSel.value;
+    /* DB에 실제로 연결이 있는 부품만 드롭다운에 표시 */
+    const usedPartLabels = new Set(
+      DB.map(r=>{ const d=dimById(r.dimId); return d?d.part:''; }).filter(Boolean)
+    );
+    /* PARTS 목록 + DB에만 있는 부품(PARTS에 없는 경우) 통합 */
+    const partOptions = PARTS.filter(p=>
+      p.dims.some(dId=>DB.some(r=>r.dimId===dId)) ||
+      [...usedPartLabels].some(lbl=>lbl===p.label)
+    );
+    filterSel.innerHTML = '<option value="">전체 부품</option>' +
+      partOptions.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+    filterSel.value = (partOptions.find(p=>p.id===prev) ? prev : '');
+  }
+  const filterPart = filterSel?.value || '';
+
+  /* ── DB 전체 rows를 부품별로 그룹핑 (PARTS.dims 무관) ── */
+  /* 각 DB row → dimById → dim.part 로 부품 파악 */
+  /* PARTS에서 label 매칭 → 없으면 "기타" 섹션 */
+
+  /* 검색 필터 먼저 적용 */
+  const hl = (txt) => {
+    if(!search||!txt) return txt||'';
+    const lc=txt.toLowerCase(), idx=lc.indexOf(search);
+    if(idx<0) return txt;
+    return txt.slice(0,idx)+'<mark class="ce-highlight">'+txt.slice(idx,idx+search.length)+'</mark>'+txt.slice(idx+search.length);
+  };
+
+  const allRows = search ? DB.filter(r=>{
+    const d=dimById(r.dimId);
+    return (d?.name||'').toLowerCase().includes(search)||
+           r.dimId.toLowerCase().includes(search)||
+           r.fName.toLowerCase().includes(search)||
+           r.crId.toLowerCase().includes(search)||
+           (crById(r.crId)?.desc||'').toLowerCase().includes(search)||
+           (r.fmId||'').toLowerCase().includes(search)||
+           (fmById(r.fmId)?.name||'').toLowerCase().includes(search)||
+           (d?.part||'').toLowerCase().includes(search);
+  }) : DB;
+
+  /* 부품명 → PARTS 매핑 테이블 (label 기준) */
+  const partByLabel = {};
+  PARTS.forEach(p=>{ partByLabel[p.label]=p; });
+
+  /* DB rows를 부품명 기준으로 그룹핑 */
+  const groupMap = {}; /* partKey → { part, rows[] } */
+  const partOrder = []; /* 순서 유지 */
+
+  allRows.forEach(r=>{
+    const d = dimById(r.dimId);
+    const partLabel = d?.part || '기타 (부품 미지정)';
+    const matchedPart = partByLabel[partLabel];
+    const partKey = matchedPart ? matchedPart.id : ('_'+partLabel);
+
+    /* 부품 필터 적용 */
+    if(filterPart && matchedPart?.id !== filterPart) return;
+
+    if(!groupMap[partKey]){
+      groupMap[partKey] = {
+        id: partKey,
+        label: matchedPart ? matchedPart.label : partLabel,
+        color: matchedPart ? matchedPart.color : '#888780',
+        rows: []
+      };
+      partOrder.push(partKey);
+    }
+    groupMap[partKey].rows.push(r);
+  });
+
+  let html = '';
+  let totalRows = 0;
+
+  partOrder.forEach(partKey=>{
+    const grp = groupMap[partKey];
+    const rows = grp.rows;
+    if(!rows.length) return;
+
+    const isOpen = !ceCollapsed.has(partKey);
+    totalRows += rows.length;
+
+    html += `<div class="ce-part-section" id="ce-sec-${partKey}">`;
+    html += `<div class="ce-part-label" onclick="cePToggle('${partKey}')">
+      <span class="ce-part-dot" style="background:${grp.color}"></span>
+      <span>${grp.label}</span>
+      <span class="ce-part-cnt">${rows.length}건</span>
+      <span class="ce-part-arrow${isOpen?' open':''}">▶</span>
+    </div>`;
+
+    if(isOpen){
+      /* 치수 ID 기준으로 그룹핑 */
+      const dimIds = [...new Set(rows.map(r=>r.dimId))];
+      dimIds.forEach(dId=>{
+        const dimRows = rows.filter(r=>r.dimId===dId);
+        const d = dimById(dId);
+        const specStr = d ? `${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)} ${d.unit}` : '';
+
+        dimRows.forEach((r, ri)=>{
+          const cr = crById(r.crId);
+          const fm = fmById(r.fmId);
+          const sev = fm?.sev||0;
+          const sevC = sev>=9?'var(--red)':sev>=6?'var(--amber)':'var(--teal)';
+          const showDim = ri===0;
+
+          html += `<div class="ce-row" id="ce-row-${r.dimId}-${r.fId||ri}">`;
+
+          /* ── 치수 셀 ── */
+          html += `<div class="ce-cell ce-cell-dim" style="${!showDim?'border-top:none;background:var(--bg2)':''}">`;
+          if(showDim){
+            html += `<span class="ce-dim-id">${r.dimId}</span>
+              <span class="ce-dim-name">${hl(d?.name||r.dimId)}</span>
+              ${specStr?`<span class="ce-dim-spec">${specStr}</span>`:''}`;
+          }
+          html += `</div>`;
+
+          /* ── 기능 셀 ── */
+          html += `<div class="ce-cell ce-cell-func">
+            <div class="ce-func-box" onclick="ceFuncClick('${r.dimId}','${r.fId||''}')">
+              <div class="ce-func-name">${hl(r.fName)}</div>
+              ${r.fType?`<div class="ce-func-type">${r.fType}</div>`:''}
+            </div>
+          </div>`;
+
+          /* ── CR 셀 ── */
+          html += `<div class="ce-cell ce-cell-cr">`;
+          if(r.crId){
+            html += `<span class="ce-cr-id" onclick="jumpCR('${r.crId}')">${r.crId}</span>
+              <span class="ce-cr-desc">${hl(cr?.desc||r.crId)}</span>
+              ${r.imp?`<span class="badge b-${r.imp} ce-cr-imp">${r.imp}</span>`:''}`;
+          } else {
+            html += `<span style="font-size:10px;color:var(--text3)">—</span>`;
+          }
+          html += `</div>`;
+
+          /* ── FM 셀 ── */
+          html += `<div class="ce-cell ce-cell-fm">`;
+          if(r.fmId && fm){
+            html += `<div class="ce-fm-box" onclick="jumpFM('${r.fmId}')">
+              <div class="ce-fm-id">${r.fmId}</div>
+              <div class="ce-fm-name">${hl(fm.name)}</div>
+              ${sev?`<div class="ce-fm-sev" style="color:${sevC}">심각도 ${sev}</div>`:''}
+            </div>`;
+          } else {
+            html += `<span style="font-size:10px;color:var(--text3)">—</span>`;
+          }
+          html += `</div>`;
+
+          /* ── RPN 셀 ── */
+          const fm_ce=fmById(r.fmId); const sev_ce=fm_ce?.sev||0;
+          const occ_ce=r.occ||0; const det_ce=r.det||0;
+          const rpn_ce=sev_ce&&occ_ce&&det_ce?sev_ce*occ_ce*det_ce:0;
+          const rpnC_ce=rpn_ce>=200?'rpn-hi':rpn_ce>=100?'rpn-md':rpn_ce>0?'rpn-lo':'rpn-na';
+          const odC_ce=(v)=>v>=8?'od-hi':v>=5?'od-md':v>0?'od-lo':'';
+          html += `<div class="ce-cell ce-cell-rpn">
+            <div class="ce-rpn-row"><span class="ce-rpn-label">Occ</span><span class="occ-det-badge ${odC_ce(occ_ce)}">${occ_ce||'—'}</span></div>
+            <div class="ce-rpn-row"><span class="ce-rpn-label">Det</span><span class="occ-det-badge ${odC_ce(det_ce)}">${det_ce||'—'}</span></div>
+            <div class="ce-rpn-row"><span class="ce-rpn-label">RPN</span><span class="rpn-badge ${rpnC_ce}">${rpn_ce||'—'}</span></div>
+          </div>`;
+
+          /* ── 조치 셀 ── */
+          html += `<div class="ce-cell" style="width:200px;flex-direction:column;align-items:flex-start;gap:3px;">
+            ${r.prevAction?`<div style="font-size:10px"><span style="font-size:9px;color:var(--purple);font-weight:500;margin-right:3px">예방</span>${r.prevAction}</div>`:''}
+            ${r.corrAction?`<div style="font-size:10px"><span style="font-size:9px;color:var(--red);font-weight:500;margin-right:3px">시정</span>${r.corrAction}</div>`:''}
+            ${r.detMethod?`<div style="font-size:10px"><span style="font-size:9px;color:var(--text3);font-weight:500;margin-right:3px">검출</span>${r.detMethod}</div>`:''}
+            ${!r.prevAction&&!r.corrAction&&!r.detMethod?'<span style="font-size:10px;color:var(--text3)">—</span>':''}
+          </div>`;
+
+          html += `</div>`; /* ce-row */
+        });
+      });
+    }
+    html += `</div>`; /* ce-part-section */
+  });
+
+  if(!html){
+    html = `<div class="ce-empty">${search?`"${search}"에 일치하는 연결이 없습니다`:'DB에 등록된 연결이 없습니다<br><span style="font-size:11px">DB 관리 탭에서 연결을 추가하세요</span>'}</div>`;
+  }
+
+  content.innerHTML = html;
+  if(stat) stat.textContent = `총 ${totalRows}건의 연결`;
+}
+
+function cePToggle(pid){
+  if(ceCollapsed.has(pid)) ceCollapsed.delete(pid);
+  else ceCollapsed.add(pid);
+  renderCETree();
+}
+
+function ceFuncClick(dimId, fId){
+  /* 치수↔기능 조회 탭으로 이동 */
+  switchTab('dim');
+  const d = dimById(dimId);
+  if(d){
+    const sel = document.getElementById('dim-sel');
+    if(sel){ sel.value = dimId; qDim(); }
+  }
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MULTI-PRODUCT MANAGEMENT
+═══════════════════════════════════════════════════════════════ */
+const PRODUCT_LIST_KEY = 'fmea_product_list_v1';
+const PRODUCT_DATA_PREFIX = 'fmea_prod_';
+
+/* 기본 제품 구조 */
+function emptyProductData(){
+  return { DIMS:[], CRS:[], FMS:[], DB:[], PARTS:[] };
+}
+
+/* 제품 목록 로드 */
+function loadProductList(){
+  try {
+    const raw = localStorage.getItem(PRODUCT_LIST_KEY);
+    if(raw) return JSON.parse(raw);
+  } catch(e){}
+  /* 기본값: DD90 제품 하나 */
+  return [{
+    id: 'DD90',
+    code: 'DD90',
+    name: 'DD90 Driving Module',
+    desc: '현재 개발 중인 Sub Assy',
+    parentId: null,
+    color: '#1D9E75',
+    createdAt: new Date().toISOString()
+  }];
+}
+
+function saveProductList(list){
+  localStorage.setItem(PRODUCT_LIST_KEY, JSON.stringify(list));
+}
+
+/* 현재 제품 ID */
+let currentProductId = (()=>{
+  const list = loadProductList();
+  const saved = localStorage.getItem('fmea_current_product');
+  if(saved && list.find(p=>p.id===saved)) return saved;
+  return list[0]?.id || 'DD90';
+})();
+
+/* 제품 데이터 저장/로드 */
+function saveProductData(productId, data){
+  localStorage.setItem(PRODUCT_DATA_PREFIX + productId, JSON.stringify(data));
+}
+
+function loadProductData(productId){
+  try {
+    const raw = localStorage.getItem(PRODUCT_DATA_PREFIX + productId);
+    if(raw){
+      const data = JSON.parse(raw);
+      return data;
+    }
+  } catch(e){}
+  return null;
+}
+
+/* 제품 전환 */
+function switchProduct(productId){
+  /* 현재 제품 저장 */
+  saveProductData(currentProductId, { DIMS, CRS, FMS, DB, PARTS, savedAt: new Date().toISOString() });
+
+  /* 새 제품 로드 */
+  currentProductId = productId;
+  localStorage.setItem('fmea_current_product', productId);
+
+  const data = loadProductData(productId);
+  if(data){
+    if(data.DIMS)  DIMS  = data.DIMS;
+    if(data.CRS)   CRS   = data.CRS;
+    if(data.FMS)   FMS   = data.FMS;
+    if(data.DB)    DB    = data.DB;
+    if(data.PARTS) PARTS = data.PARTS;
+  } else {
+    DIMS=[]; CRS=[]; FMS=[]; DB=[]; PARTS=[];
+  }
+
+  /* ── 모든 UI 상태 초기화 ── */
+  showForms       = {conn:false, dims:false, crs:false, fms:false};
+  editingConn     = -1;
+  editingDim      = -1;
+  editingCR       = -1;
+  editingFM       = -1;
+  editingPartIdx  = -1;
+  fasEditingFunc  = null;
+  fasSelectedFunc = null;
+  fasAddingToPart = null;
+  ceCollapsed.clear();
+  fasExpandedParts.clear();
+  selectedPart    = null;
+  selectedNode    = null;
+  hoveredNode     = null;
+  scrollY         = 0;
+  currentDetail   = 'info';
+
+  /* 제품명 헤더 갱신 */
+  updateProductDisplay();
+
+  /* UI 전체 갱신 */
+  buildPartTree();
+  rebuildSelects();
+  renderCETree();
+  if(currentTab==='db')   renderDBSub(currentDB);
+  if(currentTab==='fas')  renderFAS();
+  if(currentTab==='fmea') renderFMEATable();
+
+  closeProductModal();
+  notify(`제품 전환: ${getProductById(productId)?.code || productId}`);
+}
+
+function getProductById(id){
+  return loadProductList().find(p=>p.id===id);
+}
+
+function updateProductDisplay(){
+  const prod = getProductById(currentProductId);
+  const el = document.getElementById('product-name-display');
+  if(el) el.textContent = prod ? (prod.code + (prod.name?' — '+prod.name:'')) : currentProductId;
+  document.title = `FMEA — ${prod?.code||currentProductId}`;
+}
+
+/* 모달 열기/닫기 */
+function openProductModal(){
+  renderProductList();
+  document.getElementById('product-modal-bg').classList.add('open');
+}
+function closeProductModal(){
+  document.getElementById('product-modal-bg').classList.remove('open');
+  document.getElementById('add-prod-form').style.display='none';
+  document.getElementById('show-add-prod-btn').style.display='block';
+}
+document.getElementById('product-modal-bg').addEventListener('click', e=>{
+  if(e.target.id==='product-modal-bg') closeProductModal();
+});
+
+/* 색상 팔레트 */
+const PROD_COLORS = ['#1D9E75','#185FA5','#7F77DD','#D85A30','#BA7517',
+                     '#E24B4A','#1F3864','#639922','#D4537E','#888780'];
+
+function buildColorPalette(containerId, inputId, selectedColor){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = PROD_COLORS.map(col=>
+    `<div class="color-swatch${col===selectedColor?' selected':''}"
+      style="background:${col}" onclick="selectColor('${containerId}','${inputId}','${col}')"></div>`
+  ).join('');
+}
+function selectColor(palId, inputId, color){
+  document.getElementById(inputId).value = color;
+  document.querySelectorAll(`#${palId} .color-swatch`).forEach(s=>{
+    s.classList.toggle('selected', s.style.background===color);
+  });
+}
+
+/* 제품 목록 렌더링 */
+function renderProductList(){
+  const list = loadProductList();
+  const el = document.getElementById('prod-list');
+  if(!el) return;
+
+  /* 부모 선택 드롭다운 갱신 */
+  const parentSel = document.getElementById('np-parent');
+  if(parentSel){
+    parentSel.innerHTML = '<option value="">최상위 제품 (독립)</option>' +
+      list.map(p=>`<option value="${p.id}">${p.code} — ${p.name||''}</option>`).join('');
+  }
+  buildColorPalette('np-color-palette','np-color','#1D9E75');
+
+  if(!list.length){ el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">등록된 제품이 없습니다</div>'; return; }
+
+  /* 계층 구조로 정렬 */
+  const roots = list.filter(p=>!p.parentId);
+  const children = (pid) => list.filter(p=>p.parentId===pid);
+
+  function renderItem(p, depth){
+    const data = loadProductData(p.id);
+    const dbCount = data?.DB?.length || 0;
+    const dimCount = data?.DIMS?.length || 0;
+    const isActive = p.id === currentProductId;
+    return `<div class="prod-item${isActive?' active':''}"
+      style="margin-left:${depth*16}px;cursor:default"
+      id="prod-item-${p.id}">
+      <div class="prod-item-icon" style="background:${p.color}">${p.code.substring(0,3)}</div>
+      <div class="prod-item-info">
+        <div class="prod-item-name">${p.code}${p.name?' — '+p.name:''}</div>
+        <div class="prod-item-meta">${p.desc||''}${p.desc&&dbCount?' · ':''}${dbCount?`연결 ${dbCount}건`:''} ${dimCount?`/ 치수 ${dimCount}개`:''}</div>
+      </div>
+      <div class="prod-item-actions">
+        ${!isActive?`<button class="prod-act-btn" onclick="switchProduct('${p.id}')">전환</button>`
+                   :`<span style="font-size:10px;color:var(--teal);font-weight:500">현재</span>`}
+        <button class="prod-act-btn" onclick="editProduct('${p.id}')">수정</button>
+        <button class="prod-act-btn danger" onclick="deleteProduct('${p.id}')">삭제</button>
+      </div>
+    </div>
+    ${children(p.id).map(ch=>renderItem(ch, depth+1)).join('')}`;
+  }
+
+  el.innerHTML = roots.map(p=>renderItem(p,0)).join('');
+}
+
+/* 제품 추가 폼 토글 */
+function toggleAddProdForm(){
+  const form = document.getElementById('add-prod-form');
+  const btn  = document.getElementById('show-add-prod-btn');
+  const open = form.style.display==='none';
+  form.style.display = open ? 'block' : 'none';
+  btn.style.display  = open ? 'none'  : 'block';
+  if(open) buildColorPalette('np-color-palette','np-color','#1D9E75');
+}
+
+/* 제품 생성 */
+function createProduct(){
+  const code = document.getElementById('np-code').value.trim();
+  const name = document.getElementById('np-name').value.trim();
+  if(!code){ alert('제품 코드는 필수입니다.'); return; }
+
+  const list = loadProductList();
+  if(list.find(p=>p.id===code)){ alert(`"${code}" 코드가 이미 존재합니다.`); return; }
+
+  const newProd = {
+    id: code,
+    code,
+    name,
+    desc: document.getElementById('np-desc').value.trim(),
+    parentId: document.getElementById('np-parent').value || null,
+    color: document.getElementById('np-color').value || '#1D9E75',
+    createdAt: new Date().toISOString()
+  };
+  list.push(newProd);
+  saveProductList(list);
+
+  /* 빈 데이터 초기화 */
+  saveProductData(code, emptyProductData());
+
+  /* 폼 초기화 */
+  ['np-code','np-name','np-desc'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('np-parent').value='';
+  toggleAddProdForm();
+  renderProductList();
+  notify(`제품 "${code}" 추가됨`);
+}
+
+/* 제품 수정 */
+function editProduct(id){
+  const list = loadProductList();
+  const prod = list.find(p=>p.id===id);
+  if(!prod) return;
+  const newCode = prompt('제품 코드:', prod.code);
+  if(!newCode) return;
+  const newName = prompt('제품명:', prod.name||'');
+  const newDesc = prompt('설명:', prod.desc||'');
+  prod.code = newCode.trim()||prod.code;
+  prod.name = newName!==null ? newName.trim() : prod.name;
+  prod.desc = newDesc!==null ? newDesc.trim() : prod.desc;
+  saveProductList(list);
+  if(id===currentProductId) updateProductDisplay();
+  renderProductList();
+  notify('제품 정보가 수정되었습니다');
+}
+
+/* 제품 삭제 */
+function deleteProduct(id){
+  if(id===currentProductId){ alert('현재 사용 중인 제품은 삭제할 수 없습니다.'); return; }
+  const list = loadProductList();
+  const prod = list.find(p=>p.id===id);
+  if(!confirm(`"${prod?.code||id}" 제품과 모든 FMEA 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  const newList = list.filter(p=>p.id!==id);
+  /* 자식 제품의 parentId 초기화 */
+  newList.forEach(p=>{ if(p.parentId===id) p.parentId=null; });
+  saveProductList(newList);
+  localStorage.removeItem(PRODUCT_DATA_PREFIX+id);
+  renderProductList();
+  notify(`"${prod?.code||id}" 삭제됨`);
+}
+
+/* 제품 합치기 */
+function mergeProducts(){
+  const list = loadProductList();
+  if(list.length<2){ alert('합칠 제품이 2개 이상 필요합니다.'); return; }
+
+  const targetCode = prompt(
+    '합칠 대상 제품 코드를 입력하세요 (새 코드):\n\n현재 제품 목록:\n' +
+    list.map(p=>`  ${p.code}: ${p.name||''}`).join('\n')
+  );
+  if(!targetCode) return;
+
+  /* 모든 제품 데이터 병합 */
+  let mergedDIMS=[], mergedCRS=[], mergedFMS=[], mergedDB=[], mergedPARTS=[];
+  const dimIds=new Set(), crIds=new Set(), fmIds=new Set();
+
+  list.forEach(p=>{
+    const data = loadProductData(p.id) || emptyProductData();
+    data.DIMS.forEach(d=>{ if(!dimIds.has(d.id)){ dimIds.add(d.id); mergedDIMS.push(d); }});
+    data.CRS.forEach(cr=>{ if(!crIds.has(cr.id)){ crIds.add(cr.id); mergedCRS.push(cr); }});
+    data.FMS.forEach(fm=>{ if(!fmIds.has(fm.id)){ fmIds.add(fm.id); mergedFMS.push(fm); }});
+    mergedDB.push(...data.DB);
+    /* PARTS: 제품 코드를 prefix로 구분 */
+    data.PARTS.forEach(pt=>{
+      mergedPARTS.push({...pt, id:p.code+'_'+pt.id, label:p.code+' / '+pt.label});
+    });
+  });
+
+  /* 중복 DB 행 제거 */
+  const dbSeen = new Set();
+  mergedDB = mergedDB.filter(r=>{
+    const key=r.dimId+'|'+r.fId+'|'+r.crId;
+    if(dbSeen.has(key)) return false;
+    dbSeen.add(key); return true;
+  });
+
+  /* 새 제품으로 저장 */
+  const merged = {
+    id: targetCode, code: targetCode,
+    name: '통합 FMEA — '+list.map(p=>p.code).join(' + '),
+    desc: list.map(p=>p.code).join(', ')+' 통합본',
+    parentId: null, color: '#1F3864',
+    createdAt: new Date().toISOString()
+  };
+  const newList = [...list, merged];
+  saveProductList(newList);
+  saveProductData(targetCode, {
+    DIMS:mergedDIMS, CRS:mergedCRS, FMS:mergedFMS, DB:mergedDB, PARTS:mergedPARTS
+  });
+
+  renderProductList();
+  if(confirm(`통합 제품 "${targetCode}"이 생성됐습니다.\n지금 전환하시겠습니까?`)){
+    switchProduct(targetCode);
+  } else {
+    notify(`"${targetCode}" 통합 완료 — ${mergedDB.length}건 연결`);
+  }
+}
+
+/* ── saveToStorage / loadFromStorage 오버라이드 ── */
+/* 기존 STORAGE_KEY 기반 저장은 현재 제품 저장으로 리디렉션 */
+
+
+/* ═══════════════════════════════════════════════════════════════
+   FMEA 전체 뷰 — Occurrence / Detection / RPN / Actions
+═══════════════════════════════════════════════════════════════ */
+function getRPN(row){
+  const fm = fmById(row.fmId);
+  const sev = fm?.sev||0;
+  const occ = row.occ||0;
+  const det = row.det||0;
+  return (sev&&occ&&det) ? {sev,occ,det,rpn:sev*occ*det} : {sev,occ,det,rpn:0};
+}
+
+function rpnBadge(rpn){
+  if(!rpn) return `<span class="rpn-badge rpn-na">—</span>`;
+  const c = rpn>=200?'rpn-hi':rpn>=100?'rpn-md':'rpn-lo';
+  return `<span class="rpn-badge ${c}">${rpn}</span>`;
+}
+function odBadge(v, label){
+  if(!v) return `<span class="occ-det-badge" style="color:var(--text3)">—</span>`;
+  const c = v>=8?'od-hi':v>=5?'od-md':'od-lo';
+  return `<span class="occ-det-badge ${c}">${v}</span>`;
+}
+
+function renderFMEATable(){
+  const tbody  = document.getElementById('fmea-tbody');
+  const stat   = document.getElementById('fmea-stat');
+  const grpRow = document.getElementById('fmea-grp-row');
+  const hdrRow = document.getElementById('fmea-hdr-row');
+  const filterSel = document.getElementById('fmea-filter-part');
+  const search = (document.getElementById('fmea-search')?.value||'').trim().toLowerCase();
+  const rpnSort = document.getElementById('fmea-rpn-only')?.checked;
+  if(!tbody) return;
+
+  /* 부품 필터 갱신 */
+  if(filterSel){
+    const prev = filterSel.value;
+    const partByLabel = {};
+    PARTS.forEach(p=>{ partByLabel[p.label]=p; });
+    const usedParts = [...new Set(DB.map(r=>{ const d=dimById(r.dimId); return d?.part||''; }).filter(Boolean))];
+    filterSel.innerHTML = '<option value="">전체 부품</option>' +
+      PARTS.filter(p=>usedParts.includes(p.label)).map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+    filterSel.value = prev;
+  }
+  const filterPart = filterSel?.value||'';
+  const partByLabel = {};
+  PARTS.forEach(p=>{ partByLabel[p.label]=p; });
+
+  /* 그룹 헤더 */
+  grpRow.innerHTML = `
+    <th class="fmea-grp-hdr grp-dim" colspan="4">치수 / 부품</th>
+    <th class="fmea-grp-hdr grp-func" colspan="3">기능</th>
+    <th class="fmea-grp-hdr grp-fm" colspan="3">Failure Mode</th>
+    <th class="fmea-grp-hdr grp-rpn" colspan="4">Risk Assessment</th>
+    <th class="fmea-grp-hdr grp-action" colspan="3">Actions</th>`;
+
+  hdrRow.innerHTML = `
+    <th>부품명</th><th>치수ID</th><th>치수명</th><th>공칭/공차</th>
+    <th>기능명</th><th>기능유형</th><th>CR</th>
+    <th>Failure Mode</th><th>FM유형</th><th>심각도<br>Sev</th>
+    <th>발생도<br>Occ</th><th>검출도<br>Det</th><th>RPN</th><th>검출 방법</th>
+    <th>예방 조치</th><th>시정 조치</th><th>중요도</th>`;
+
+  /* 데이터 필터링 */
+  let rows = DB.filter(r=>{
+    const d = dimById(r.dimId);
+    if(filterPart){
+      const p = partByLabel[d?.part||''];
+      if(!p || p.id !== filterPart) return false;
+    }
+    if(search){
+      const fm = fmById(r.fmId);
+      return (d?.name||'').toLowerCase().includes(search)||
+             r.dimId.toLowerCase().includes(search)||
+             r.fName.toLowerCase().includes(search)||
+             r.crId.toLowerCase().includes(search)||
+             (fm?.name||'').toLowerCase().includes(search)||
+             (r.prevAction||'').toLowerCase().includes(search)||
+             (r.corrAction||'').toLowerCase().includes(search)||
+             (d?.part||'').toLowerCase().includes(search);
+    }
+    return true;
+  });
+
+  /* RPN 정렬 */
+  if(rpnSort){
+    rows = [...rows].sort((a,b)=>{
+      const ra=getRPN(a).rpn||0, rb=getRPN(b).rpn||0;
+      return rb-ra;
+    });
+  }
+
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="17" style="text-align:center;padding:40px;color:var(--text3)">${search?`"${search}" 결과 없음`:'데이터 없음'}</td></tr>`;
+    if(stat) stat.textContent='';
+    return;
+  }
+
+  /* RPN 통계 */
+  const rpns = rows.map(r=>getRPN(r).rpn).filter(Boolean);
+  const hiCnt = rpns.filter(v=>v>=200).length;
+  const mdCnt = rpns.filter(v=>v>=100&&v<200).length;
+
+  let html='';
+  rows.forEach((r,idx)=>{
+    const d   = dimById(r.dimId);
+    const fm  = fmById(r.fmId);
+    const cr  = crById(r.crId);
+    const {sev,occ,det,rpn} = getRPN(r);
+    const rpnC = rpn>=200?'rpn-hi':rpn>=100?'rpn-md':rpn>0?'rpn-lo':'rpn-na';
+    const odC  = (v)=>v>=8?'od-hi':v>=5?'od-md':v>0?'od-lo':'';
+    const spec = d?`${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)} ${d.unit}`:'';
+    const part = d?.part||'—';
+
+    /* 인라인 편집 가능한 셀 (Occ/Det/Actions) */
+    html += `<tr id="fmea-row-${idx}">
+      <td style="font-size:11px">${part}</td>
+      <td style="font-family:var(--font-mono);font-size:10px;color:var(--teal)">${r.dimId}</td>
+      <td style="font-size:11px">${d?.name||r.dimId}</td>
+      <td style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">${spec}</td>
+      <td style="font-size:11px;font-weight:500">${r.fName}</td>
+      <td style="font-size:10px;color:var(--text3)">${r.fType||'—'}</td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);color:var(--purple)">${r.crId}</span></td>
+      <td style="font-size:11px;color:var(--red2)">${fm?.name||'—'}</td>
+      <td style="font-size:10px;color:var(--text3)">${fm?.type||'—'}</td>
+      <td style="text-align:center">${odBadge(sev)}</td>
+      <td style="text-align:center" id="fmea-occ-${idx}">
+        <input class="num-input" value="${occ||''}" placeholder="—"
+          onchange="fmeaUpdateField(${DB.indexOf(r)},'occ',this.value)"
+          onfocus="this.select()" style="width:42px">
+      </td>
+      <td style="text-align:center" id="fmea-det-${idx}">
+        <input class="num-input" value="${det||''}" placeholder="—"
+          onchange="fmeaUpdateField(${DB.indexOf(r)},'det',this.value)"
+          onfocus="this.select()" style="width:42px">
+      </td>
+      <td style="text-align:center" id="fmea-rpn-${idx}">${rpnBadge(rpn)}</td>
+      <td><input class="action-input" value="${r.detMethod||''}" placeholder="검출 방법 입력"
+          onchange="fmeaUpdateField(${DB.indexOf(r)},'detMethod',this.value)"
+          style="min-width:100px"></td>
+      <td><input class="action-input" value="${r.prevAction||''}" placeholder="예방 조치 입력"
+          onchange="fmeaUpdateField(${DB.indexOf(r)},'prevAction',this.value)"
+          style="min-width:120px"></td>
+      <td><input class="action-input" value="${r.corrAction||''}" placeholder="시정 조치 입력"
+          onchange="fmeaUpdateField(${DB.indexOf(r)},'corrAction',this.value)"
+          style="min-width:120px"></td>
+      <td>${ib(r.imp)}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+  if(stat) stat.textContent = `${rows.length}건 | RPN 고위험(≥200): ${hiCnt}건 / 중위험(≥100): ${mdCnt}건`;
+}
+
+/* FMEA 테이블 셀 직접 업데이트 */
+function fmeaUpdateField(dbIdx, field, value){
+  if(dbIdx<0||dbIdx>=DB.length) return;
+  if(field==='occ'||field==='det'){
+    const v = parseInt(value)||0;
+    DB[dbIdx][field] = (v>=1&&v<=10) ? v : undefined;
+  } else {
+    DB[dbIdx][field] = value.trim()||undefined;
+  }
+  /* RPN 셀 즉시 갱신 (테이블 전체 리렌더 없이) */
+  const rowIdx = [...document.querySelectorAll('#fmea-tbody tr')].findIndex(
+    tr=>tr.querySelector(`[onchange*="fmeaUpdateField(${dbIdx},"]`)
+  );
+  const {sev,occ,det,rpn} = getRPN(DB[dbIdx]);
+  const rpnCell = document.querySelector(`#fmea-tbody tr:nth-child(${rowIdx+1}) td:nth-child(13)`);
+  if(rpnCell) rpnCell.innerHTML = rpnBadge(rpn);
+  saveToStorage();
+  renderCETree();
+}
+
+/* CSV 내보내기 */
+function exportFMEACSV(){
+  const prod = getProductById(currentProductId);
+  const headers = ['부품명','치수ID','치수명','공칭/공차','기능명','기능유형','CR',
+    'Failure Mode','FM유형','심각도(Sev)','발생도(Occ)','검출도(Det)','RPN',
+    '검출방법','예방조치','시정조치','중요도'];
+  const rows = DB.map(r=>{
+    const d=dimById(r.dimId); const fm=fmById(r.fmId);
+    const {sev,occ,det,rpn}=getRPN(r);
+    const spec=d?`${fmt(d.nom)} +${fmt(d.tolP)}/-${fmt(d.tolM)} ${d.unit}`:'';
+    return [d?.part||'',r.dimId,d?.name||'',spec,r.fName,r.fType||'',r.crId,
+      fm?.name||'',fm?.type||'',sev||'',occ||'',det||'',rpn||'',
+      r.detMethod||'',r.prevAction||'',r.corrAction||'',r.imp
+    ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+  });
+  const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0,10);
+  const code = prod?.code||currentProductId;
+  a.download = `FMEA_${code}_${date}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  notify(`FMEA_${code} CSV 내보내기 완료`);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STORAGE — localStorage 자동저장 + JSON 내보내기/가져오기
+═══════════════════════════════════════════════════════════════ */
+const STORAGE_KEY = 'fmea_data_v1';
+
+function saveToStorage(){
+  /* requestAnimationFrame 이후 실행 → DOM repaint 먼저, 저장 나중 */
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      try {
+        const data = { DIMS, CRS, FMS, DB, PARTS, savedAt: new Date().toISOString() };
+        /* 제품별 키로 저장 */
+        localStorage.setItem(PRODUCT_DATA_PREFIX + currentProductId, JSON.stringify(data));
+        /* 호환성: 기존 키에도 저장 */
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        const st = document.getElementById('save-status');
+        if(st){
+          const t = new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+          st.textContent = '저장됨 ' + t;
+          setTimeout(()=>{ st.textContent=''; }, 3000);
+        }
+      } catch(e) { console.warn('localStorage 저장 실패:', e); }
+    }, 0);
+  });
+}
+
+function loadFromStorage(){
+  try {
+    /* 제품별 키 우선, 없으면 기존 키 */
+    const prodRaw = localStorage.getItem(PRODUCT_DATA_PREFIX + currentProductId);
+    const raw = prodRaw || localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(data.DIMS)  DIMS  = data.DIMS;
+    if(data.CRS)   CRS   = data.CRS;
+    if(data.FMS)   FMS   = data.FMS;
+    if(data.DB)    DB    = data.DB;
+    if(data.PARTS) PARTS = data.PARTS;
+    return true;
+  } catch(e) { console.warn('localStorage 로드 실패:', e); return false; }
+}
+
+function exportJSON(){
+  const prod = getProductById(currentProductId);
+  const data = { DIMS, CRS, FMS, DB, PARTS,
+    product: prod,
+    exportedAt: new Date().toISOString(), version: 2 };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0,10);
+  const code = prod?.code || currentProductId;
+  a.download = `FMEA_${code}_${date}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  notify(`FMEA_${code} 내보내기 완료`);
+}
+
+function importJSON(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const hasDims = Array.isArray(data.DIMS) && data.DIMS.length > 0;
+      const hasCRS  = Array.isArray(data.CRS)  && data.CRS.length  > 0;
+      const hasFMS  = Array.isArray(data.FMS)  && data.FMS.length  > 0;
+      const hasDB   = Array.isArray(data.DB)   && data.DB.length   > 0;
+      if(!hasDims && !hasCRS && !hasFMS && !hasDB){
+        alert('유효한 FMEA 데이터 파일이 아닙니다.'); return;
+      }
+      const prodInfo = data.product ? `제품: ${data.product.code} — ${data.product.name||''}\n` : '';
+      if(!confirm(`${prodInfo}파일을 가져오면 현재 데이터가 교체됩니다.\n\n치수: ${data.DIMS?.length||0}개 · CR: ${data.CRS?.length||0}개 · FM: ${data.FMS?.length||0}개 · 연결: ${data.DB?.length||0}건 · 부품: ${data.PARTS?.length||0}개\n\n계속하시겠습니까?`)) return;
+      if(data.DIMS)  DIMS  = data.DIMS;
+      if(data.CRS)   CRS   = data.CRS;
+      if(data.FMS)   FMS   = data.FMS;
+      if(data.DB)    DB    = data.DB;
+      if(data.PARTS) PARTS = data.PARTS;
+      /* 가져온 파일의 제품 정보가 있으면 현재 제품에 반영 */
+      if(data.product && data.product.code){
+        const list = loadProductList();
+        const existing = list.find(p=>p.id===currentProductId);
+        if(existing && !existing.name && data.product.name){
+          existing.name = data.product.name;
+          existing.desc = data.product.desc||existing.desc;
+          saveProductList(list);
+          updateProductDisplay();
+        }
+      }
+      selectedPart = null; selectedNode = null;
+      ceCollapsed.clear();
+      buildPartTree(); rebuildSelects();
+      saveToStorage();
+      notify(`가져오기 완료 — 연결 ${DB.length}건`);
+    } catch(err) { alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* 데이터 변경 시 자동저장을 트리거하는 래퍼 */
+const _origSaveConn = saveConn;
+const _origDelConn  = delConn;
+const _origSaveDim  = saveDim;
+const _origDelDim   = delDim;
+const _origSaveCR   = saveCR;
+const _origDelCR    = delCR;
+const _origSaveFM   = saveFM;
+const _origDelFM    = delFM;
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+window.addEventListener('resize',()=>{
+  if(canvas) resizeCanvas();
+});
+
+/* localStorage에서 데이터 복원 */
+const restored = loadFromStorage();
+
+/* 제품 목록 초기화: DD90이 없으면 생성 */
+(function initProducts(){
+  const list = loadProductList();
+  if(!list.find(p=>p.id==='DD90')){
+    /* 기존 STORAGE_KEY 데이터가 있으면 DD90으로 마이그레이션 */
+    const oldData = localStorage.getItem(STORAGE_KEY);
+    if(oldData){
+      localStorage.setItem(PRODUCT_DATA_PREFIX+'DD90', oldData);
+    }
+    list.unshift({
+      id:'DD90', code:'DD90',
+      name:'DD90 Driving Module',
+      desc:'Sub Assy',
+      parentId:null, color:'#1D9E75',
+      createdAt:new Date().toISOString()
+    });
+    saveProductList(list);
+  }
+  updateProductDisplay();
+})();
+
+buildPartTree();
+rebuildSelects();
+renderCETree();
+
+if(restored){
+  const st = document.getElementById('save-status');
+  st.textContent = '이전 데이터 복원됨';
+  setTimeout(()=>{ st.textContent=''; }, 3000);
+}
+
+
+</script>
+</body>
+</html>

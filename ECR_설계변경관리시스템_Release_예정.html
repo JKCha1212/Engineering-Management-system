@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECR 설계변경 관리 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#0D1B2A; --navy2:#1A2D42; --blue:#1E5FA3; --blue2:#2E7DD1;
+  --cyan:#00C2CB; --gold:#E8A020; --gold2:#FFC94A;
+  --green:#22C55E; --red:#EF4444; --orange:#F97316;
+  --white:#F0F4F8; --gray1:#E2E8F0; --gray2:#94A3B8; --gray3:#475569;
+  --surface:#162235; --surface2:#1E2F45; --surface3:#243550;
+  --border:rgba(46,125,209,0.25); --border2:rgba(0,194,203,0.3);
+  --shadow:0 8px 32px rgba(0,0,0,0.4); --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:14px}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;overflow-x:hidden}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* NAV */
+#topnav{background:linear-gradient(90deg,var(--navy2),var(--surface));border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;height:56px;flex-shrink:0;position:relative;z-index:100}
+#topnav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),var(--blue2),transparent)}
+.logo{display:flex;align-items:center;gap:10px;margin-right:36px}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--blue2),var(--cyan));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;font-family:'JetBrains Mono',monospace;box-shadow:0 0 16px rgba(0,194,203,0.4)}
+.logo-text{font-size:15px;font-weight:700;color:var(--white);letter-spacing:-0.3px}
+.logo-sub{font-size:10px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase}
+.nav-tabs{display:flex;gap:2px}
+.nav-tab{padding:0 18px;height:56px;display:flex;align-items:center;gap:7px;cursor:pointer;border:none;background:transparent;color:var(--gray2);font-size:13px;font-weight:500;font-family:'Noto Sans KR',sans-serif;transition:all .2s;position:relative;white-space:nowrap}
+.nav-tab:hover{color:var(--white);background:rgba(255,255,255,0.05)}
+.nav-tab.active{color:var(--cyan)}
+.nav-tab.active::after{content:'';position:absolute;bottom:0;left:12px;right:12px;height:2px;background:linear-gradient(90deg,var(--blue2),var(--cyan));border-radius:2px 2px 0 0}
+.nav-tab svg{width:15px;height:15px;flex-shrink:0}
+.nav-badge{background:var(--blue2);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.nav-spacer{flex:1}
+.nav-date{font-size:11px;color:var(--gray2);font-family:'JetBrains Mono',monospace}
+
+/* MAIN */
+#main{flex:1;overflow:auto}
+.tab-panel{display:none;padding:24px;min-height:100%}
+.tab-panel.active{display:block}
+
+/* SECTION TITLE */
+.section-title{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.section-title h2{font-size:20px;font-weight:700;color:var(--white)}
+.section-title .sub{font-size:13px;color:var(--gray2)}
+.section-bar{width:4px;height:24px;background:linear-gradient(180deg,var(--cyan),var(--blue2));border-radius:2px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card-header{font-size:12px;font-weight:700;color:var(--cyan);letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-header::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);display:inline-block;box-shadow:0 0 8px var(--cyan)}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.total::before{background:linear-gradient(90deg,var(--blue2),var(--cyan))}
+.stat-card.active::before{background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.stat-card.done::before{background:linear-gradient(90deg,var(--green),#86EFAC)}
+.stat-card.urgent::before{background:linear-gradient(90deg,var(--red),#FCA5A5)}
+.stat-card.hold::before{background:linear-gradient(90deg,var(--gray3),var(--gray2))}
+.stat-label{font-size:10px;color:var(--gray2);font-weight:500;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.stat-value{font-size:34px;font-weight:900;font-family:'JetBrains Mono',monospace;line-height:1}
+.stat-card.total .stat-value{color:var(--cyan)}
+.stat-card.active .stat-value{color:var(--gold2)}
+.stat-card.done .stat-value{color:var(--green)}
+.stat-card.urgent .stat-value{color:#FCA5A5}
+.stat-card.hold .stat-value{color:var(--gray2)}
+.stat-sub{font-size:11px;color:var(--gray2);margin-top:4px}
+
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr}}
+
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.prog-label{width:76px;font-size:12px;color:var(--gray2);flex-shrink:0}
+.prog-bar{flex:1;height:7px;background:var(--navy);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.prog-pct{width:34px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--gray2);text-align:right}
+
+.recent-list{display:flex;flex-direction:column;gap:7px}
+.recent-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface3);border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.recent-item:hover{border-color:var(--border2)}
+.recent-no{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--cyan);font-weight:700;width:72px;flex-shrink:0}
+.recent-title{flex:1;font-size:12px;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:110px}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar{width:100%;border-radius:4px 4px 0 0;transition:height .6s ease;min-height:4px}
+.bar-name{font-size:10px;color:var(--gray2);text-align:center}
+.bar-cnt{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700}
+
+/* BUTTONS */
+.btn{padding:8px 15px;border-radius:8px;border:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 16px rgba(46,125,209,.4)}
+.btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--gray1)}
+.btn-secondary:hover{border-color:var(--blue2);color:var(--white)}
+.btn-danger{background:var(--surface2);border:1px solid rgba(239,68,68,.3);color:#FCA5A5}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);font-weight:700}
+.btn-gold:hover{opacity:.9;transform:translateY(-1px)}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 34px;color:var(--white);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--blue2)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--gray2)}
+.filter-sel{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--white);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;cursor:pointer}
+.filter-sel:focus{border-color:var(--blue2)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface3)}
+th{padding:11px 13px;text-align:left;font-size:10px;font-weight:700;color:var(--cyan);letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background .15s;cursor:pointer}
+tbody tr:hover{background:var(--surface3)}
+.no-cell{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--cyan);font-size:12px}
+.title-cell{font-weight:500;color:var(--white);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta-cell{color:var(--gray2);font-size:12px}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%}
+.badge-active{background:rgba(232,160,32,.15);color:var(--gold2);border:1px solid rgba(232,160,32,.3)}
+.badge-active::before{background:var(--gold2)}
+.badge-done{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.badge-done::before{background:var(--green)}
+.badge-hold{background:rgba(148,163,184,.15);color:var(--gray2);border:1px solid rgba(148,163,184,.3)}
+.badge-hold::before{background:var(--gray2)}
+.badge-review{background:rgba(46,125,209,.15);color:var(--blue2);border:1px solid rgba(46,125,209,.3)}
+.badge-review::before{background:var(--blue2)}
+.priority-urgent{color:#FCA5A5;font-weight:700;font-size:11px}
+.priority-normal{color:var(--gray1);font-size:11px}
+.priority-low{color:var(--gray2);font-size:11px}
+
+/* FORMS */
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.span2{grid-column:1/-1}
+.form-label{font-size:11px;color:var(--gray2);font-weight:500;letter-spacing:.5px}
+.form-input,.form-select,.form-textarea{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--white);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--blue2)}
+.form-select option{background:var(--surface)}
+.form-textarea{resize:vertical;min-height:70px}
+
+/* CHECK SHEET */
+.cs-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.cs-no-input-wrap{display:flex;align-items:center;gap:8px}
+.cs-no-input-wrap label{font-size:13px;color:var(--gray2);white-space:nowrap}
+.cs-no-input{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;color:var(--cyan);font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;width:160px;outline:none;text-align:center;transition:border-color .2s}
+.cs-no-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,194,203,.1)}
+
+.cs-info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:768px){.cs-info-grid{grid-template-columns:1fr 1fr}}
+.cs-info-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 13px}
+.cs-info-label{font-size:10px;color:var(--gray2);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.cs-info-value{font-size:13px;color:var(--white);font-weight:500}
+
+.cs-sections{display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
+.cs-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.cs-section-header{background:var(--surface3);padding:11px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.cs-section-title{font-size:13px;font-weight:700;color:var(--cyan);display:flex;align-items:center;gap:8px}
+.cs-section-progress{font-size:11px;color:var(--gray2);font-family:'JetBrains Mono',monospace}
+
+.cs-check-table{width:100%;border-collapse:collapse}
+.cs-check-table th{padding:9px 14px;font-size:10px;font-weight:700;color:var(--gray3);letter-spacing:.8px;text-transform:uppercase;background:var(--surface2);border-bottom:1px solid var(--border)}
+.cs-check-table td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+.cs-check-table tr:last-child td{border-bottom:none}
+.cs-check-table tr:hover td{background:rgba(255,255,255,.02)}
+.check-no{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gray3);width:28px}
+.check-item{font-size:12px;color:var(--gray1)}
+.check-item.req::after{content:'*';color:var(--red);margin-left:3px;font-size:10px}
+.check-note-hint{font-size:10px;color:var(--gray3);margin-top:2px}
+
+.check-sel{background:var(--navy);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--white);font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;cursor:pointer;width:120px}
+.check-sel.sel-done{border-color:rgba(34,197,94,.4);color:var(--green);background:rgba(34,197,94,.05)}
+.check-sel.sel-fail{border-color:rgba(239,68,68,.4);color:#FCA5A5;background:rgba(239,68,68,.05)}
+.check-sel.sel-na{border-color:rgba(148,163,184,.3);color:var(--gray2)}
+/* ① 완제품 영향도 전용 2-option 셀렉트 */
+.check-sel.sel-nochange{border-color:rgba(34,197,94,.4);color:var(--green);background:rgba(34,197,94,.05)}
+.check-sel.sel-change{border-color:rgba(239,68,68,.4);color:#FCA5A5;background:rgba(239,68,68,.05)}
+
+.check-remark{background:var(--navy);border:1px solid transparent;border-radius:6px;padding:4px 8px;font-size:12px;color:var(--gray1);width:100%;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s}
+.check-remark:focus{border-color:var(--border)}
+
+/* RISK BADGE */
+.risk-box{display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700}
+.risk-a{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.4)}
+.risk-b{background:rgba(232,160,32,.15);color:var(--gold2);border:1px solid rgba(232,160,32,.4)}
+.risk-c{background:rgba(239,68,68,.15);color:#FCA5A5;border:1px solid rgba(239,68,68,.4)}
+.risk-score{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:900}
+
+.cs-progress-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.cs-progress-label{font-size:12px;color:var(--gray2);font-weight:500}
+.cs-progress-bar-wrap{flex:1;min-width:180px;height:9px;background:var(--navy);border-radius:5px;overflow:hidden}
+.cs-progress-bar{height:100%;background:linear-gradient(90deg,var(--blue2),var(--cyan));border-radius:5px;transition:width .4s}
+.cs-progress-pct{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--cyan)}
+.cs-prog-counts{display:flex;gap:14px;flex-wrap:wrap}
+.cs-prog-item{display:flex;align-items:center;gap:5px;font-size:12px}
+.cs-prog-dot{width:6px;height:6px;border-radius:50%}
+
+.sign-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-top:16px}
+@media(max-width:700px){.sign-grid{grid-template-columns:1fr 1fr}}
+.sign-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+.sign-role{font-size:10px;color:var(--gray2);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.sign-input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--white);font-size:13px;font-family:'Noto Sans KR',sans-serif;width:100%;outline:none;padding:5px 0;text-align:center}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:660px;max-height:90vh;overflow-y:auto;box-shadow:0 32px 64px rgba(0,0,0,.6);animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:none}}
+.modal-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1}
+.modal-title{font-size:15px;font-weight:700;color:var(--white)}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--gray2);font-size:18px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all .15s}
+.modal-close:hover{background:var(--surface3);color:var(--white)}
+.modal-body{padding:18px 22px 20px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--surface)}
+.mform-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mform-grid .span2{grid-column:1/-1}
+
+/* REGULATION TAB */
+.reg-layout{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start}
+@media(max-width:900px){.reg-layout{grid-template-columns:1fr}}
+.reg-sidebar{position:sticky;top:0}
+.reg-toc{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.reg-toc-title{font-size:11px;font-weight:700;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.reg-toc-item{font-size:12px;color:var(--blue2);cursor:pointer;padding:4px 6px;transition:all .15s;display:flex;align-items:center;gap:8px;border-radius:5px}
+.reg-toc-item:hover{color:var(--cyan);background:rgba(0,194,203,.08)}
+.reg-toc-item.active-toc{color:var(--cyan);background:rgba(0,194,203,.1)}
+.reg-toc-no{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gray3);width:32px;flex-shrink:0}
+
+.reg-content{display:flex;flex-direction:column;gap:14px}
+.reg-article{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.reg-article-head{padding:14px 20px;background:var(--surface3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.reg-article-no-title{display:flex;align-items:baseline;gap:10px}
+.reg-article-no{font-size:10px;font-weight:700;color:var(--cyan);letter-spacing:1px;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.reg-article-title-text{font-size:15px;font-weight:700;color:var(--white)}
+.reg-article-edit-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--gray2);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.reg-article-edit-btn:hover{border-color:var(--blue2);color:var(--blue2)}
+.reg-article-body{padding:18px 20px;font-size:13px;color:var(--gray1);line-height:1.9}
+.reg-article-body p{margin-bottom:9px}
+.reg-article-body ul{padding-left:18px}
+.reg-article-body ul li{margin-bottom:5px}
+.reg-article-body .clause{margin-bottom:9px;display:flex;gap:8px}
+.reg-clause-no{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gray3);flex-shrink:0;width:22px;padding-top:1px}
+.reg-table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px}
+.reg-table th{background:var(--surface3);padding:7px 11px;text-align:left;color:var(--gray2);border:1px solid var(--border)}
+.reg-table td{padding:7px 11px;border:1px solid var(--border);color:var(--gray1)}
+
+/* Edit mode */
+.reg-edit-area{width:100%;min-height:180px;background:var(--navy);border:1px solid var(--border2);border-radius:8px;padding:12px;color:var(--white);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;line-height:1.8;resize:vertical}
+.reg-edit-area:focus{border-color:var(--cyan)}
+.reg-edit-toolbar{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast-msg{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:11px 16px;font-size:13px;color:var(--white);box-shadow:var(--shadow);animation:toastIn .25s ease;display:flex;align-items:center;gap:8px}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.toast-msg.success::before{content:'✓';color:var(--green);font-weight:700}
+.toast-msg.info::before{content:'ℹ';color:var(--blue2);font-weight:700}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--gray3)}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--gray2)}
+.empty-state .icon{font-size:42px;margin-bottom:10px;opacity:.4}
+
+@media print{
+  #topnav,.toolbar,.cs-toolbar,.btn,.reg-article-edit-btn{display:none!important}
+  .card,.cs-section,.reg-article{break-inside:avoid}
+  body{background:#fff;color:#000}
+  .reg-layout{grid-template-columns:1fr}
+  .reg-sidebar{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- TOP NAV -->
+<nav id="topnav">
+  <div class="logo">
+    <div class="logo-icon">EO</div>
+    <div>
+      <div class="logo-text">ECR 설계변경 관리 시스템</div>
+      <div class="logo-sub">Engineering Change Request · EO Number Management</div>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      대시보드
+    </button>
+    <button class="nav-tab" onclick="showTab('list')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      변경 이력 List
+      <span class="nav-badge" id="list-badge">0</span>
+    </button>
+    <button class="nav-tab" onclick="showTab('checksheet')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Check Sheet (설계변경요청서)
+    </button>
+    <button class="nav-tab" onclick="showTab('regulation')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      ECR 규정
+    </button>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="nav-date" id="now-date"></div>
+</nav>
+
+<div id="main">
+
+<!-- ══ DASHBOARD ══ -->
+<div class="tab-panel active" id="tab-dashboard">
+  <div class="section-title">
+    <div class="section-bar"></div>
+    <h2>설계변경 이력 대시보드</h2>
+    <span class="sub">Engineering Change Dashboard</span>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card total"><div class="stat-label">전체 EO 건수</div><div class="stat-value" id="stat-total">0</div><div class="stat-sub">누적 총계</div></div>
+    <div class="stat-card active"><div class="stat-label">진행중</div><div class="stat-value" id="stat-active">0</div><div class="stat-sub">처리 대기</div></div>
+    <div class="stat-card done"><div class="stat-label">완료</div><div class="stat-value" id="stat-done">0</div><div class="stat-sub">완료 처리</div></div>
+    <div class="stat-card urgent"><div class="stat-label">긴급</div><div class="stat-value" id="stat-urgent">0</div><div class="stat-sub">긴급 우선순위</div></div>
+    <div class="stat-card hold"><div class="stat-label">보류 / 검토중</div><div class="stat-value" id="stat-hold">0</div><div class="stat-sub">처리 대기</div></div>
+  </div>
+  <div class="dash-grid">
+    <div class="card"><div class="card-header">변경 유형별 현황</div><div id="type-chart" class="bar-chart"></div></div>
+    <div class="card"><div class="card-header">진행 상태 분포</div><div id="status-progress"></div></div>
+    <div class="card"><div class="card-header">최근 등록 EO</div><div class="recent-list" id="recent-list"><div class="empty-state"><div class="icon">📋</div><p>등록된 이력이 없습니다.</p></div></div></div>
+    <div class="card"><div class="card-header">우선순위 현황</div><div id="priority-progress"></div></div>
+  </div>
+</div>
+
+<!-- ══ LIST ══ -->
+<div class="tab-panel" id="tab-list">
+  <div class="section-title">
+    <div class="section-bar"></div>
+    <h2>설계변경 이력 관리 (EO Number List)</h2>
+    <span class="sub">Change History List</span>
+  </div>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search-input" placeholder="EO번호, 제목, 담당자 검색..." oninput="renderList()">
+    </div>
+    <select class="filter-sel" id="filter-status" onchange="renderList()">
+      <option value="">전체 상태</option>
+      <option>진행중</option><option>완료</option><option>보류</option><option>검토중</option>
+    </select>
+    <select class="filter-sel" id="filter-type" onchange="renderList()">
+      <option value="">전체 유형</option>
+      <option>도면변경</option><option>사양변경</option><option>재질변경</option><option>공정변경</option><option>기타</option>
+    </select>
+    <select class="filter-sel" id="filter-pri" onchange="renderList()">
+      <option value="">전체 우선순위</option>
+      <option>긴급</option><option>일반</option><option>낮음</option>
+    </select>
+    <button class="btn btn-primary" onclick="openNewModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      새 EO 등록
+    </button>
+    <button class="btn btn-secondary" onclick="exportCSV()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      CSV 내보내기
+    </button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>No.</th><th>EO Number</th><th>변경 제목</th><th>완제품</th><th>담당자</th>
+        <th>변경 구분</th><th>우선순위</th><th>EO 발행일</th><th>완료예정일</th>
+        <th>진행상태</th><th>Risk</th><th>체크율</th><th>액션</th>
+      </tr></thead>
+      <tbody id="ecr-tbody"></tbody>
+    </table>
+  </div>
+  <div id="list-empty" class="empty-state" style="display:none"><div class="icon">📋</div><p>조건에 맞는 EO가 없습니다.</p></div>
+</div>
+
+<!-- ══ CHECK SHEET ══ -->
+<div class="tab-panel" id="tab-checksheet">
+  <div class="section-title">
+    <div class="section-bar"></div>
+    <h2>설계 변경 요청서 (Check Sheet)</h2>
+    <span class="sub">Engineering Change Order · 설계변경_CheckSheet</span>
+  </div>
+
+  <div class="cs-toolbar">
+    <div class="cs-no-input-wrap">
+      <label>EO Number</label>
+      <input type="text" class="cs-no-input" id="cs-no-input" placeholder="EO2026001" oninput="loadCheckSheet(this.value)">
+    </div>
+    <button class="btn btn-gold" onclick="openNewModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      새 EO 생성
+    </button>
+    <button class="btn btn-primary" onclick="saveCheckSheet()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      저장
+    </button>
+    <button class="btn btn-secondary" onclick="window.print()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      인쇄
+    </button>
+    <span style="font-size:11px;color:var(--gray2);margin-left:auto">EO Number 입력 시 자동 로드 · 저장 시 List 반영</span>
+  </div>
+
+  <!-- 진행률 + Risk -->
+  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:14px">
+    <div class="cs-progress-wrap" style="margin-bottom:0">
+      <span class="cs-progress-label">체크 진행률</span>
+      <div class="cs-progress-bar-wrap"><div class="cs-progress-bar" id="cs-prog-bar" style="width:0%"></div></div>
+      <span class="cs-progress-pct" id="cs-prog-pct">0%</span>
+      <div class="cs-progress-counts" id="cs-prog-counts"></div>
+    </div>
+    <div class="card" style="padding:14px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:160px">
+      <div style="font-size:10px;color:var(--gray2);font-weight:700;letter-spacing:1px">RISK ASSESSMENT</div>
+      <div class="risk-score" id="risk-score-val" style="color:var(--cyan)">—</div>
+      <div id="risk-badge-wrap"></div>
+      <div id="risk-approval" style="font-size:10px;color:var(--gray2);text-align:center;margin-top:4px"></div>
+    </div>
+  </div>
+
+  <!-- 기본 정보 -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-header">기본 정보</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="form-group"><label class="form-label">EO Number</label><input class="form-input" id="f-ecno" style="color:var(--cyan);font-weight:700;font-family:'JetBrains Mono',monospace" readonly></div>
+      <div class="form-group"><label class="form-label">변경 목적</label><input class="form-input" id="f-purpose" placeholder="변경 목적 입력"></div>
+      <div class="form-group"><label class="form-label">담당자</label><input class="form-input" id="f-manager" placeholder="담당자명"></div>
+      <div class="form-group"><label class="form-label">관련된 대표 완제품</label><input class="form-input" id="f-product" placeholder="완제품명 / 모델명"></div>
+      <div class="form-group"><label class="form-label">변경 부품 품번</label><input class="form-input" id="f-partno" placeholder="RP-xxx-xxx"></div>
+      <div class="form-group"><label class="form-label">작성 일자</label><input class="form-input" id="f-date" type="date"></div>
+      <div class="form-group"><label class="form-label">변경 구분</label>
+        <select class="form-select" id="f-type">
+          <option value="">선택</option>
+          <option>도면변경</option><option>사양변경</option><option>재질변경</option><option>공정변경</option><option>기타</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">우선순위</label>
+        <select class="form-select" id="f-priority">
+          <option value="">선택</option><option>긴급</option><option>일반</option><option>낮음</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">완료예정일</label><input class="form-input" id="f-duedate" type="date"></div>
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">▶ 변경 제목 / 내용 요약</label><input class="form-input" id="f-title" placeholder="변경 내용을 간략히 요약하여 입력하세요."></div>
+      <div class="form-group"><label class="form-label">진행 상태</label>
+        <select class="form-select" id="f-status">
+          <option>진행중</option><option>완료</option><option>보류</option><option>검토중</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 변경 전/후 이미지 영역 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div class="card">
+      <div class="card-header">변경 전 (대표 그림 / 설명)</div>
+      <textarea class="form-textarea" id="f-before" placeholder="변경 전 상태, 도면번호, 특이사항 등을 기입하세요." style="width:100%;min-height:80px"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-header">변경 후 (대표 그림 / 설명)</div>
+      <textarea class="form-textarea" id="f-after" placeholder="변경 후 상태, 도면번호, 개선 내용 등을 기입하세요." style="width:100%;min-height:80px"></textarea>
+    </div>
+  </div>
+
+  <!-- 체크 섹션 -->
+  <div class="cs-sections" id="cs-sections"></div>
+
+  <!-- 특이사항 -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-header">⑥ 특이사항 및 후속 조치</div>
+    <textarea class="form-textarea" id="f-notes" placeholder="특이사항 및 후속 조치 내용을 입력하세요." style="width:100%;min-height:80px"></textarea>
+  </div>
+
+  <!-- 결재 -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">⑧ 결재</div>
+    <div class="sign-grid">
+      <div class="sign-box"><div class="sign-role">작성</div><input class="sign-input" id="sign-writer" placeholder="이름 / 날짜"></div>
+      <div class="sign-box"><div class="sign-role">검토</div><input class="sign-input" id="sign-reviewer" placeholder="이름 / 날짜"></div>
+      <div class="sign-box"><div class="sign-role">합의 (필요 시)</div><input class="sign-input" id="sign-agree" placeholder="이름 / 날짜"></div>
+      <div class="sign-box"><div class="sign-role">승인</div><input class="sign-input" id="sign-approver" placeholder="이름 / 날짜"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ REGULATION ══ -->
+<div class="tab-panel" id="tab-regulation">
+  <div class="section-title">
+    <div class="section-bar"></div>
+    <h2>ECR 설계변경 규정 (규칙서)</h2>
+    <span class="sub">Engineering Change Request Regulation · 수정 가능</span>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
+    <button class="btn btn-secondary" onclick="addRegArticle()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      조항 추가
+    </button>
+    <button class="btn btn-secondary" onclick="window.print()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      인쇄
+    </button>
+  </div>
+  <div class="reg-layout">
+    <div class="reg-sidebar">
+      <div class="reg-toc">
+        <div class="reg-toc-title">목차</div>
+        <div id="reg-toc"></div>
+      </div>
+    </div>
+    <div class="reg-content" id="reg-articles"></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL: 새 EO 등록 / 편집 -->
+<div class="modal-overlay" id="ecr-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title-text">새 EO 등록</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mform-grid">
+        <div class="form-group"><label class="form-label">EO Number (자동)</label><input class="form-input" id="m-no" readonly style="color:var(--cyan);font-family:'JetBrains Mono',monospace"></div>
+        <div class="form-group"><label class="form-label">변경 목적</label><input class="form-input" id="m-purpose" placeholder="변경 목적"></div>
+        <div class="form-group span2"><label class="form-label">변경 제목 *</label><input class="form-input" id="m-title" placeholder="변경 내용 요약"></div>
+        <div class="form-group"><label class="form-label">관련된 대표 완제품</label><input class="form-input" id="m-product" placeholder="완제품명"></div>
+        <div class="form-group"><label class="form-label">담당자 *</label><input class="form-input" id="m-manager" placeholder="담당자"></div>
+        <div class="form-group"><label class="form-label">변경 부품 품번</label><input class="form-input" id="m-partno" placeholder="RP-xxx-xxx"></div>
+        <div class="form-group"><label class="form-label">변경 구분 *</label>
+          <select class="form-select" id="m-type">
+            <option value="">선택</option>
+            <option>도면변경</option><option>사양변경</option><option>재질변경</option><option>공정변경</option><option>기타</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">우선순위</label>
+          <select class="form-select" id="m-priority"><option>일반</option><option>긴급</option><option>낮음</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">EO 발행일</label><input class="form-input" id="m-date" type="date"></div>
+        <div class="form-group"><label class="form-label">완료예정일</label><input class="form-input" id="m-due" type="date"></div>
+        <div class="form-group"><label class="form-label">진행 상태</label>
+          <select class="form-select" id="m-status"><option>진행중</option><option>완료</option><option>보류</option><option>검토중</option></select>
+        </div>
+        <div class="form-group span2"><label class="form-label">비고</label><textarea class="form-textarea" id="m-note" placeholder="비고" style="min-height:50px"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 규정 편집 -->
+<div class="modal-overlay" id="reg-modal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <div class="modal-title" id="reg-modal-title">조항 편집</div>
+      <button class="modal-close" onclick="closeRegModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="form-group"><label class="form-label">조항 번호 (예: 제1조)</label><input class="form-input" id="reg-edit-no" placeholder="제N조"></div>
+        <div class="form-group"><label class="form-label">제목</label><input class="form-input" id="reg-edit-title" placeholder="조항 제목"></div>
+        <div class="form-group">
+          <label class="form-label">내용 (HTML 태그 사용 가능: &lt;p&gt;, &lt;ul&gt;&lt;li&gt;, &lt;b&gt;, &lt;table&gt; 등)</label>
+          <textarea class="reg-edit-area" id="reg-edit-body" placeholder="조항 내용을 입력하세요..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-danger" id="reg-delete-btn" onclick="deleteRegArticle()">조항 삭제</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="closeRegModal()">취소</button>
+        <button class="btn btn-primary" onclick="saveRegArticle()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════
+// DATA
+// ═══════════════════════════════════
+let records = JSON.parse(localStorage.getItem('ecr_records_v2') || '[]');
+let regulations = JSON.parse(localStorage.getItem('ecr_regs_v2') || 'null') || getDefaultRegs();
+let editingId = null;
+let editingRegIdx = null;
+
+function saveRecords() { localStorage.setItem('ecr_records_v2', JSON.stringify(records)); }
+function saveRegs()    { localStorage.setItem('ecr_regs_v2', JSON.stringify(regulations)); }
+
+// EO Number 자동 생성: EO{연도}{순번3자리}
+function nextEoNumber() {
+  const year = new Date().getFullYear();
+  const thisYear = records.filter(r => r.no && r.no.startsWith('EO'+year));
+  const nums = thisYear.map(r => {
+    const m = r.no.match(/(\d{3})$/);
+    return m ? parseInt(m[1]) : 0;
+  });
+  const seq = nums.length ? Math.max(...nums) + 1 : 1;
+  return 'EO' + year + String(seq).padStart(3, '0');
+}
+
+// ═══════════════════════════════════
+// TAB
+// ═══════════════════════════════════
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabs = ['dashboard','list','checksheet','regulation'];
+  document.querySelectorAll('.nav-tab')[tabs.indexOf(name)].classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'list') renderList();
+  if (name === 'regulation') renderRegulation();
+}
+
+// ═══════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════
+function renderDashboard() {
+  const total  = records.length;
+  const active = records.filter(r=>r.status==='진행중').length;
+  const done   = records.filter(r=>r.status==='완료').length;
+  const urgent = records.filter(r=>r.priority==='긴급').length;
+  const hold   = records.filter(r=>r.status==='보류'||r.status==='검토중').length;
+
+  ['total','active','done','urgent','hold'].forEach(k => {
+    document.getElementById('stat-'+k).textContent = {total,active,done,urgent,hold}[k];
+  });
+  document.getElementById('list-badge').textContent = total;
+
+  // 유형 차트
+  const types = ['도면변경','사양변경','재질변경','공정변경','기타'];
+  const colors = ['#2E7DD1','#00C2CB','#E8A020','#22C55E','#94A3B8'];
+  const counts = types.map(t => records.filter(r=>r.type===t).length);
+  const maxC = Math.max(...counts, 1);
+  document.getElementById('type-chart').innerHTML = types.map((t,i) =>
+    `<div class="bar-wrap">
+      <div class="bar-cnt" style="color:${colors[i]}">${counts[i]}</div>
+      <div class="bar" style="height:${Math.round(counts[i]/maxC*100)}%;background:${colors[i]};opacity:.85"></div>
+      <div class="bar-name">${t.replace('변경','')}</div>
+    </div>`).join('');
+
+  // 상태 프로그레스
+  const statuses = [
+    {l:'진행중',c:active,col:'#E8A020'},
+    {l:'완료',c:done,col:'#22C55E'},
+    {l:'검토중',c:records.filter(r=>r.status==='검토중').length,col:'#2E7DD1'},
+    {l:'보류',c:records.filter(r=>r.status==='보류').length,col:'#94A3B8'},
+  ];
+  document.getElementById('status-progress').innerHTML = statuses.map(s =>
+    `<div class="prog-row"><div class="prog-label">${s.l}</div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${total?Math.round(s.c/total*100):0}%;background:${s.col}"></div></div>
+    <div class="prog-pct">${total?Math.round(s.c/total*100):0}%</div></div>`).join('');
+
+  // 최근
+  const recent = [...records].reverse().slice(0, 6);
+  document.getElementById('recent-list').innerHTML = !recent.length
+    ? '<div class="empty-state"><div class="icon">📋</div><p>등록된 이력이 없습니다.</p></div>'
+    : recent.map(r => `<div class="recent-item" onclick="openCheckSheet('${r.no}')">
+        <div class="recent-no">${r.no}</div>
+        <div class="recent-title">${r.title||'(제목 없음)'}</div>
+        <div>${statusBadge(r.status)}</div>
+      </div>`).join('');
+
+  // 우선순위
+  const pris = [
+    {l:'긴급',c:urgent,col:'#FCA5A5'},
+    {l:'일반',c:records.filter(r=>r.priority==='일반').length,col:'#93C5FD'},
+    {l:'낮음',c:records.filter(r=>r.priority==='낮음').length,col:'#94A3B8'},
+  ];
+  document.getElementById('priority-progress').innerHTML = pris.map(p =>
+    `<div class="prog-row"><div class="prog-label">${p.l}</div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${total?Math.round(p.c/total*100):0}%;background:${p.col}"></div></div>
+    <div class="prog-pct">${p.c}건</div></div>`).join('');
+}
+
+// ═══════════════════════════════════
+// LIST
+// ═══════════════════════════════════
+function renderList() {
+  const q  = (document.getElementById('search-input').value||'').toLowerCase();
+  const fs = document.getElementById('filter-status').value;
+  const ft = document.getElementById('filter-type').value;
+  const fp = document.getElementById('filter-pri').value;
+  const filtered = records.filter(r => {
+    if (q && !(`${r.no} ${r.title} ${r.manager}`.toLowerCase().includes(q))) return false;
+    if (fs && r.status !== fs) return false;
+    if (ft && r.type !== ft) return false;
+    if (fp && r.priority !== fp) return false;
+    return true;
+  });
+  const tbody = document.getElementById('ecr-tbody');
+  const empty = document.getElementById('list-empty');
+  if (!filtered.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtered.map((r,i) => {
+    const pct = checkPct(r);
+    const risk = calcRisk(r);
+    const riskHtml = risk.score === null ? '—'
+      : `<span class="risk-box risk-${risk.cat.toLowerCase()}" style="font-size:11px;padding:2px 7px">${risk.cat} (${risk.score})</span>`;
+    return `<tr onclick="openCheckSheet('${r.no}')">
+      <td class="meta-cell">${filtered.length - i}</td>
+      <td><span class="no-cell">${r.no}</span></td>
+      <td><span class="title-cell">${r.title||'—'}</span></td>
+      <td class="meta-cell">${r.product||'—'}</td>
+      <td class="meta-cell">${r.manager||'—'}</td>
+      <td class="meta-cell">${r.type||'—'}</td>
+      <td>${priorityBadge(r.priority)}</td>
+      <td class="meta-cell">${r.date||'—'}</td>
+      <td class="meta-cell">${r.due||'—'}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td>${riskHtml}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:5px">
+          <div style="flex:1;height:5px;background:var(--navy);border-radius:3px;overflow:hidden;min-width:50px">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--blue2),var(--cyan));border-radius:3px"></div>
+          </div>
+          <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--gray2)">${pct}%</span>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();editRecord('${r.no}')">편집</button>
+          <button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();deleteRecord('${r.no}')">삭제</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function checkPct(r) {
+  if (!r.checks) return 0;
+  const all = Object.entries(r.checks).filter(([k,v]) => !k.endsWith('_r'));
+  if (!all.length) return 0;
+  return Math.round(all.filter(([k,v])=>v==='완료').length / all.length * 100);
+}
+
+function calcRisk(r) {
+  if (!r.checks) return {score:null, cat:'—'};
+  // 섹션별 점수 로직 (엑셀 기준)
+  // ①완제품: 1개 이상 체크 시 50, 미만 0
+  // ②도면: 4개 이상 완료 0, 미만 20
+  // ③성능: 4개 이상 완료 0, 미만 25
+  // ④원가: 2개 이상 완료 0, 미만 15
+  // ⑤검증: 2개 이상 완료 0, 미만 15
+  // ⑦도면확인: 2개 이상 완료 0, 미만 15  (총 최대 100점 = 고위험)
+  const get = id => r.checks[id] || '';
+  const s1_ids = ['c1_1','c1_2','c1_3'];
+  const s2_ids = ['c2_1','c2_2','c2_3','c2_4','c2_5'];
+  const s3_ids = ['c3_1','c3_2','c3_3','c3_4','c3_5'];
+  const s4_ids = ['c4_1','c4_2','c4_3','c4_4'];
+  const s5_ids = ['c5_1','c5_2','c5_3'];
+  const s7_ids = ['c7_1','c7_2'];
+  const done = ids => ids.filter(id=>get(id)==='완료').length;
+  const hasChange = ids => ids.some(id=>get(id)==='변경 발생'); // ① 전용
+
+  let score = 0;
+  if (hasChange(s1_ids)) score += 50; // 완제품 변경 발생 시 +50
+  if (done(s2_ids) < 4) score += 20;
+  if (done(s3_ids) < 4) score += 25;
+  if (done(s4_ids) < 2) score += 15;
+  if (done(s5_ids) < 2) score += 15;
+  if (done(s7_ids) < 2) score += 15;
+
+  // 점수가 낮을수록 좋음 (누락 없음)
+  // 엑셀 원본 수식은 누락 시 점수 부여 방식
+  // Risk category: A=낮음(0~20), B=중간(21~49), C=높음(50+)
+  const cat = score <= 20 ? 'A' : score <= 49 ? 'B' : 'C';
+  return {score, cat};
+}
+
+function statusBadge(s) {
+  const map = {진행중:'active',완료:'done',보류:'hold',검토중:'review'};
+  return `<span class="badge badge-${map[s]||'hold'}">${s||'—'}</span>`;
+}
+function priorityBadge(p) {
+  const cls = p==='긴급'?'priority-urgent':p==='낮음'?'priority-low':'priority-normal';
+  return `<span class="${cls}">${p||'—'}</span>`;
+}
+
+// ═══════════════════════════════════
+// MODAL (EO 등록/편집)
+// ═══════════════════════════════════
+function openNewModal() {
+  editingId = null;
+  const no = nextEoNumber();
+  document.getElementById('modal-title-text').textContent = '새 EO 등록';
+  document.getElementById('m-no').value = no;
+  ['m-purpose','m-title','m-product','m-manager','m-partno','m-note'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('m-type').value='';
+  document.getElementById('m-priority').value='일반';
+  document.getElementById('m-status').value='진행중';
+  document.getElementById('m-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('m-due').value='';
+  document.getElementById('ecr-modal').classList.add('open');
+}
+
+function editRecord(no) {
+  const r = records.find(x=>x.no===no);
+  if (!r) return;
+  editingId = no;
+  document.getElementById('modal-title-text').textContent = `EO 편집 — ${no}`;
+  document.getElementById('m-no').value = no;
+  document.getElementById('m-purpose').value = r.purpose||'';
+  document.getElementById('m-title').value = r.title||'';
+  document.getElementById('m-product').value = r.product||'';
+  document.getElementById('m-manager').value = r.manager||'';
+  document.getElementById('m-partno').value = r.partno||'';
+  document.getElementById('m-type').value = r.type||'';
+  document.getElementById('m-priority').value = r.priority||'일반';
+  document.getElementById('m-status').value = r.status||'진행중';
+  document.getElementById('m-date').value = r.date||'';
+  document.getElementById('m-due').value = r.due||'';
+  document.getElementById('m-note').value = r.note||'';
+  document.getElementById('ecr-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('ecr-modal').classList.remove('open'); }
+
+function saveModal() {
+  const title   = document.getElementById('m-title').value.trim();
+  const manager = document.getElementById('m-manager').value.trim();
+  const type    = document.getElementById('m-type').value;
+  if (!title||!manager||!type) { toast('필수항목(제목, 담당자, 변경구분)을 입력하세요.','info'); return; }
+  const no = document.getElementById('m-no').value;
+  const data = {
+    no, purpose:document.getElementById('m-purpose').value, title,
+    product:document.getElementById('m-product').value,
+    manager, partno:document.getElementById('m-partno').value,
+    type, priority:document.getElementById('m-priority').value,
+    status:document.getElementById('m-status').value,
+    date:document.getElementById('m-date').value,
+    due:document.getElementById('m-due').value,
+    note:document.getElementById('m-note').value,
+  };
+  if (editingId) {
+    const r = records.find(x=>x.no===editingId);
+    Object.assign(r, data);
+    toast(`${no} 수정 완료`, 'success');
+  } else {
+    records.push({...data, checks:{}, signs:{}});
+    toast(`${no} 등록 완료`, 'success');
+  }
+  saveRecords();
+  closeModal();
+  renderList();
+  document.getElementById('list-badge').textContent = records.length;
+}
+
+function deleteRecord(no) {
+  if (!confirm(`${no} 를 삭제하시겠습니까?`)) return;
+  records = records.filter(r=>r.no!==no);
+  saveRecords(); renderList();
+  toast(`${no} 삭제`, 'info');
+}
+
+// ═══════════════════════════════════
+// CHECK SHEET
+// ═══════════════════════════════════
+const CS_SECTIONS = [
+  { id:'s1', title:'① 완제품 영향도 평가', note:'변경 없음 또는 변경 발생 선택', scoreNote:'변경 발생 1개 이상 시 Risk +50점', items:[
+    {id:'c1_1', text:'E/E Architecture의 변경 여부', hint:'', type2:true},
+    {id:'c1_2', text:'TS 인증 문서의 변경 여부', hint:'', type2:true},
+    {id:'c1_3', text:'완제품 크기(길이×폭)에 변경이 발생하는지 여부', hint:'', type2:true},
+  ]},
+  { id:'s2', title:'② 도면 / 설계 검토', note:'미완료 시 공란으로 둘것', scoreNote:'4개 미만 완료 시 Risk +20점', items:[
+    {id:'c2_1', text:'도면 개정번호(Rev.) 업데이트 여부 확인', hint:'', req:true},
+    {id:'c2_2', text:'치수 공차 기준 (누적공차 포함) 적합성 확인 (리포트)', hint:''},
+    {id:'c2_3', text:'재질 / 표면처리 사양 반영 여부 확인', hint:''},
+    {id:'c2_4', text:'3D 모델 및 2D 도면 일치 여부 확인', hint:''},
+    {id:'c2_5', text:'관련 부품 간섭(Interference) 확인 (리포트)', hint:''},
+  ]},
+  { id:'s3', title:'③ 성능 / 품질 영향 평가', note:'미완료 시 공란으로 둘것', scoreNote:'4개 미만 완료 시 Risk +25점', items:[
+    {id:'c3_1', text:'성능 시험 기준 충족 여부 확인 (리포트)', hint:'', req:true},
+    {id:'c3_2', text:'신뢰성 / 내구성 영향 검토 (리포트)', hint:''},
+    {id:'c3_3', text:'규격 (KS, ISO, IEC 등) 적합성 확인 (리포트)', hint:''},
+    {id:'c3_4', text:'품질 이력(불량 유형) 반영 여부 (리포트)', hint:''},
+    {id:'c3_5', text:'품질 향상 여부 확인 (리포트)', hint:''},
+  ]},
+  { id:'s4', title:'④ 원가 / 일정 영향', note:'미완료 시 공란으로 둘것', scoreNote:'2개 미만 완료 시 Risk +15점', items:[
+    {id:'c4_1', text:'원가 증감 분석 완료 여부 확인', hint:'절감액: ____ KRW'},
+    {id:'c4_2', text:'납기 및 일정 영향 검토', hint:''},
+    {id:'c4_3', text:'금형 / 치공구 및 업체 변경 필요 여부 확인', hint:''},
+    {id:'c4_4', text:'재고 처리 계획 수립 여부 확인', hint:''},
+  ]},
+  { id:'s5', title:'⑤ 검증 / 시험 계획', note:'', scoreNote:'2개 미만 완료 시 Risk +15점', items:[
+    {id:'c5_1', text:'시제품(Prototype) 제작 필요 여부 확인', hint:'제작비: ____ KRW'},
+    {id:'c5_2', text:'시험 항목 및 기준 설정 완료 확인', hint:'', req:true},
+    {id:'c5_3', text:'시험 결과 적합 판정 완료 확인', hint:'', req:true},
+  ]},
+  { id:'s7', title:'⑦ 도면 확인', note:'', scoreNote:'2개 미만 완료 시 Risk +15점', items:[
+    {id:'c7_1', text:'변경 전 도면 (Rev. 이전본) _ 별도 폴더로 저장', hint:''},
+    {id:'c7_2', text:'변경 후 도면 (Rev. 최신본) _ 제품 폴더에 저장', hint:''},
+  ]},
+];
+
+function selClass(v, type2) {
+  if (type2) return v==='변경 없음'?'sel-nochange':v==='변경 발생'?'sel-change':'';
+  return v==='완료'?'sel-done':v==='미완료'?'sel-fail':v==='해당없음'?'sel-na':'';
+}
+
+function buildCheckSections(checks) {
+  const el = document.getElementById('cs-sections');
+  el.innerHTML = CS_SECTIONS.map(sec => {
+    // 섹션 ① 완료 카운트: '변경 없음' 또는 '변경 발생' 모두 선택된 것으로 집계
+    const doneN = sec.items.filter(it => {
+      const v = checks[it.id]||'';
+      return it.type2 ? (v==='변경 없음'||v==='변경 발생') : v==='완료';
+    }).length;
+    const rows = sec.items.map((it,i) => {
+      const v  = checks[it.id]||'';
+      const rk = checks[it.id+'_r']||'';
+      const sc = selClass(v, it.type2);
+      const selectHtml = it.type2
+        ? `<select class="check-sel ${sc}" data-id="${it.id}" data-type2="1" onchange="onCheckChange(this)" style="width:130px">
+            <option value="">미선택</option>
+            <option${v==='변경 없음'?' selected':''}>변경 없음</option>
+            <option${v==='변경 발생'?' selected':''}>변경 발생</option>
+          </select>`
+        : `<select class="check-sel ${sc}" data-id="${it.id}" onchange="onCheckChange(this)">
+            <option value="">미선택</option>
+            <option${v==='완료'?' selected':''}>완료</option>
+            <option${v==='미완료'?' selected':''}>미완료</option>
+            <option${v==='해당없음'?' selected':''}>해당없음</option>
+          </select>`;
+      return `<tr>
+        <td class="check-no">${String(i+1).padStart(2,'0')}</td>
+        <td>
+          <div class="check-item${it.req?' req':''}">${it.text}</div>
+          ${it.hint?`<div class="check-note-hint">${it.hint}</div>`:''}
+        </td>
+        <td style="width:36px;text-align:center;font-size:11px;color:var(--gray3)">확인</td>
+        <td style="width:140px">${selectHtml}</td>
+        <td><input class="check-remark" data-id="${it.id}_r" value="${rk}" placeholder="비고" oninput="onRemarkChange(this)"></td>
+      </tr>`;
+    }).join('');
+    return `<div class="cs-section">
+      <div class="cs-section-header">
+        <div class="cs-section-title">
+          <svg viewBox="0 0 16 16" fill="${doneN===sec.items.length&&doneN>0?'var(--green)':'var(--gray3)'}" width="12"><circle cx="8" cy="8" r="8"/></svg>
+          ${sec.title}
+          ${sec.note?`<span style="font-size:10px;color:var(--gray3);font-weight:400">(${sec.note})</span>`:''}
+        </div>
+        <div class="cs-section-progress">${doneN} / ${sec.items.length} · ${sec.scoreNote}</div>
+      </div>
+      <table class="cs-check-table">
+        <thead><tr>
+          <th style="width:30px">No.</th><th>확인 항목</th>
+          <th style="width:36px">구분</th><th style="width:130px">체크</th><th>비고</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+function onCheckChange(sel) {
+  const isType2 = sel.dataset.type2 === '1';
+  sel.className = 'check-sel ' + selClass(sel.value, isType2);
+  const no = document.getElementById('f-ecno').value;
+  const r = records.find(x=>x.no===no);
+  if (r) { r.checks[sel.dataset.id] = sel.value; saveRecords(); }
+  updateCSProgress();
+}
+function onRemarkChange(inp) {
+  const no = document.getElementById('f-ecno').value;
+  const r = records.find(x=>x.no===no);
+  if (r) { r.checks[inp.dataset.id] = inp.value; saveRecords(); }
+}
+
+function updateCSProgress() {
+  const sels = document.querySelectorAll('.check-sel');
+  let done=0, change=0, nochange=0, fail=0, na=0;
+  sels.forEach(s => {
+    const v = s.value;
+    if (s.dataset.type2==='1') {
+      if (v==='변경 없음') nochange++;
+      else if (v==='변경 발생') change++;
+    } else {
+      if (v==='완료') done++;
+      else if (v==='미완료') fail++;
+      else if (v==='해당없음') na++;
+    }
+  });
+  const totalSelected = done + change + nochange + fail + na;
+  const totalSels = sels.length;
+  // 진행률: 완료+변경없음+변경발생(선택됨) 기준
+  const checkedCount = done + change + nochange;
+  const pct = totalSels ? Math.round(checkedCount / totalSels * 100) : 0;
+  document.getElementById('cs-prog-bar').style.width = pct+'%';
+  document.getElementById('cs-prog-pct').textContent = pct+'%';
+  document.getElementById('cs-prog-counts').innerHTML = `
+    <div class="cs-prog-item"><div class="cs-prog-dot" style="background:var(--green)"></div>완료 ${done}</div>
+    <div class="cs-prog-item"><div class="cs-prog-dot" style="background:var(--green);opacity:.6"></div>변경없음 ${nochange}</div>
+    <div class="cs-prog-item"><div class="cs-prog-dot" style="background:#FCA5A5"></div>변경발생 ${change}</div>
+    <div class="cs-prog-item"><div class="cs-prog-dot" style="background:var(--red)"></div>미완료 ${fail}</div>
+    <div class="cs-prog-item"><div class="cs-prog-dot" style="background:var(--gray3)"></div>해당없음 ${na}</div>
+    <div class="cs-prog-item"><div class="cs-prog-dot" style="background:var(--border)"></div>미선택 ${totalSels-totalSelected}</div>
+  `;
+  // Risk 계산 (현재 화면 기준)
+  const checksNow = {};
+  document.querySelectorAll('.check-sel').forEach(s=>checksNow[s.dataset.id]=s.value);
+  const r2 = {checks: checksNow};
+  const risk = calcRisk(r2);
+  const riskCatLabel = {A:'낮음 (A)',B:'중간 (B)',C:'높음 (C)'};
+  const approvalText = {
+    A:'A: 낮음 → 팀장님 승인',
+    B:'B: 중간 → 관련부서(PM/SW/Sales) 합의 + 팀장님 승인',
+    C:'C: 높음 → 관련부서 승인 + 팀장님 승인'
+  };
+  document.getElementById('risk-score-val').textContent = risk.score !== null ? risk.score : '—';
+  document.getElementById('risk-score-val').style.color =
+    risk.cat==='A'?'var(--green)':risk.cat==='B'?'var(--gold2)':'#FCA5A5';
+  document.getElementById('risk-badge-wrap').innerHTML = risk.score !== null
+    ? `<span class="risk-box risk-${risk.cat.toLowerCase()}">${riskCatLabel[risk.cat]||risk.cat}</span>` : '';
+  document.getElementById('risk-approval').textContent = approvalText[risk.cat]||'';
+}
+
+function loadCheckSheet(noRaw) {
+  const no = noRaw.trim();
+  if (!no) return;
+  document.getElementById('f-ecno').value = no;
+  const r = records.find(x=>x.no===no);
+  const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
+  if (r) {
+    setV('f-purpose', r.purpose); setV('f-product', r.product);
+    setV('f-manager', r.manager); setV('f-partno', r.partno);
+    setV('f-date', r.date); setV('f-type', r.type);
+    setV('f-priority', r.priority); setV('f-duedate', r.due);
+    setV('f-title', r.title); setV('f-status', r.status);
+    setV('f-notes', r.notes); setV('f-before', r.before); setV('f-after', r.after);
+    setV('sign-writer', r.signs&&r.signs.writer);
+    setV('sign-reviewer', r.signs&&r.signs.reviewer);
+    setV('sign-agree', r.signs&&r.signs.agree);
+    setV('sign-approver', r.signs&&r.signs.approver);
+    buildCheckSections(r.checks||{});
+  } else {
+    buildCheckSections({});
+  }
+  updateCSProgress();
+}
+
+function openCheckSheet(no) {
+  showTab('checksheet');
+  document.getElementById('cs-no-input').value = no;
+  loadCheckSheet(no);
+}
+
+function saveCheckSheet() {
+  const no = document.getElementById('f-ecno').value.trim();
+  if (!no) { toast('EO Number를 입력하세요.','info'); return; }
+  let r = records.find(x=>x.no===no);
+  if (!r) { r={no,checks:{},signs:{}}; records.push(r); }
+  const checks = {};
+  document.querySelectorAll('.check-sel').forEach(s=>checks[s.dataset.id]=s.value);
+  document.querySelectorAll('.check-remark').forEach(i=>checks[i.dataset.id]=i.value);
+  Object.assign(r, {
+    purpose: document.getElementById('f-purpose').value,
+    product: document.getElementById('f-product').value,
+    manager: document.getElementById('f-manager').value,
+    partno:  document.getElementById('f-partno').value,
+    date:    document.getElementById('f-date').value,
+    type:    document.getElementById('f-type').value,
+    priority:document.getElementById('f-priority').value,
+    due:     document.getElementById('f-duedate').value,
+    title:   document.getElementById('f-title').value,
+    status:  document.getElementById('f-status').value,
+    notes:   document.getElementById('f-notes').value,
+    before:  document.getElementById('f-before').value,
+    after:   document.getElementById('f-after').value,
+    checks,
+    signs:{
+      writer:   document.getElementById('sign-writer').value,
+      reviewer: document.getElementById('sign-reviewer').value,
+      agree:    document.getElementById('sign-agree').value,
+      approver: document.getElementById('sign-approver').value,
+    }
+  });
+  saveRecords();
+  document.getElementById('list-badge').textContent = records.length;
+  toast(`${no} Check Sheet 저장 완료`, 'success');
+}
+
+// ═══════════════════════════════════
+// REGULATION
+// ═══════════════════════════════════
+function getDefaultRegs() {
+  return [
+    { no:'EO Number 생성 방법', title:'EO Number 체계', body:`<div class="clause"><div class="reg-clause-no">①</div><div><b>형식:</b> EO + 연도 4자리 + 일련번호 3자리<br>예시: <b>EO2026001</b></div></div>
+<div class="clause"><div class="reg-clause-no">②</div><div>EO: Engineering Change Order</div></div>
+<div class="clause"><div class="reg-clause-no">③</div><div>2026: 설계 변경 연도</div></div>
+<div class="clause"><div class="reg-clause-no">④</div><div>001: 일련번호 (2027년도 설계 변경: EO2027001부터 다시 1번 시작)</div></div>` },
+    { no:'설계 변경 미팅', title:'설계 변경 미팅 규칙', body:`<p><b>미팅 시간:</b> 30분 이내로 진행</p>
+<p><b>참석자:</b> 설계변경자, 검토자, 팀장</p>
+<p><b>필요 문서:</b></p>
+<ul>
+  <li>설계변경 요청서 (본 시스템 Check Sheet)</li>
+  <li>관련 부서 합의 문서 및 분석된 Report</li>
+</ul>` },
+    { no:'ECR 문서 저장', title:'ECR 문서 저장 폴더', body:`<p>공식 저장 경로:</p>
+<p style="font-family:'JetBrains Mono',monospace;background:var(--surface3);padding:8px 12px;border-radius:6px;font-size:12px;word-break:break-all">\\\\file.hlklemove.com\\AB$\\Mobility Solution Tech\\81000000\\MSTG_PP\\05_PROJECT\\103_ECR</p>` },
+    { no:'ECR 적용 대상', title:'적용 대상 부품 기준', body:`<ul>
+  <li>Parkie / DD90 BOM에 <b>2026-04-01 시점 기준</b> 등록된 모든 부품</li>
+  <li>신규 개발품도 실차 또는 Sub ass'y 상태의 평가가 진행된 부품이면 설계 변경 프로세스 적용 대상</li>
+</ul>` },
+    { no:'부품 설계 변경 기준', title:'Revision 변경 규칙', body:`<div class="clause"><div class="reg-clause-no">①</div><div>완제품 도면의 치수 변경이 없으면 완제품 도면은 Revision 변경을 하지 않음</div></div>
+<div class="clause"><div class="reg-clause-no">②</div><div>파트 도면 변경 시 파트도면이 포함된 <b>BOM Level 1 도면</b>까지는 Revision 필요</div></div>
+<p style="margin-top:10px"><b>Revision 변경 예시:</b><br>
+RP-152-002 Panel, Assembly, E-FRT의 변경이 있다면 → 상위 제품 <b>RP-020-000 Body assembly (Level 1)</b>까지 같이 변경</p>` },
+    { no:'ECR 순서', title:'ECR 진행 순서 (Process)', body:`<div class="clause"><div class="reg-clause-no">1</div><div>본 시스템에서 <b>새 EO 등록</b> → EO Number 자동 부여</div></div>
+<div class="clause"><div class="reg-clause-no">2</div><div>Check Sheet 작성 (변경 전/후, 8개 섹션 체크 항목 완성)</div></div>
+<div class="clause"><div class="reg-clause-no">3</div><div>설계 변경 미팅 (30분 이내, 설계변경자·검토자·팀장)</div></div>
+<div class="clause"><div class="reg-clause-no">4</div><div>Risk Assessment 결과에 따른 결재 진행<br>
+  <table class="reg-table" style="margin-top:8px">
+    <thead><tr><th>Risk Category</th><th>수준</th><th>필요 결재</th></tr></thead>
+    <tbody>
+      <tr><td><b>A (Score 0~20)</b></td><td>낮음</td><td>팀장님 승인</td></tr>
+      <tr><td><b>B (Score 21~49)</b></td><td>중간</td><td>관련 부서(PM, SW, Sales 팀) 합의 + 팀장님 승인</td></tr>
+      <tr><td><b>C (Score 50+)</b></td><td>높음</td><td>관련 부서 승인 + 팀장님 승인</td></tr>
+    </tbody>
+  </table>
+</div></div>
+<div class="clause"><div class="reg-clause-no">5</div><div>도면 Rev. 업데이트 및 관련 BOM 반영</div></div>
+<div class="clause"><div class="reg-clause-no">6</div><div>EO Number List 진행상태를 <b>"완료"</b>로 업데이트</div></div>` },
+    { no:'이력 보존', title:'이력 관리 및 보존 기준', body:`<div class="clause"><div class="reg-clause-no">①</div><div>모든 EO 이력은 본 시스템의 "변경 이력 List"에 영구 보존하며 최소 <b>5년 이상</b> 관리</div></div>
+<div class="clause"><div class="reg-clause-no">②</div><div>변경 시행 후 3개월 이내에 변경 효과를 검증하고 결과를 해당 EO의 비고란에 기록</div></div>
+<div class="clause"><div class="reg-clause-no">③</div><div>관련 문서 파일은 위 공식 저장 폴더에 EO Number 폴더명으로 보관</div></div>` },
+  ];
+}
+
+function renderRegulation() {
+  const tocEl = document.getElementById('reg-toc');
+  const artEl = document.getElementById('reg-articles');
+  tocEl.innerHTML = regulations.map((r,i) =>
+    `<div class="reg-toc-item" id="toc-${i}" onclick="scrollToReg(${i})">
+      <span class="reg-toc-no">${r.no}</span>
+      <span>${r.title}</span>
+    </div>`).join('');
+  artEl.innerHTML = regulations.map((r,i) =>
+    `<div class="reg-article" id="reg-art-${i}">
+      <div class="reg-article-head">
+        <div class="reg-article-no-title">
+          <div class="reg-article-no">${r.no}</div>
+          <div class="reg-article-title-text">${r.title}</div>
+        </div>
+        <button class="reg-article-edit-btn" onclick="openRegModal(${i})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          편집
+        </button>
+      </div>
+      <div class="reg-article-body">${r.body}</div>
+    </div>`).join('');
+}
+
+function scrollToReg(i) {
+  document.getElementById('reg-art-'+i)?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.reg-toc-item').forEach(el=>el.classList.remove('active-toc'));
+  document.getElementById('toc-'+i)?.classList.add('active-toc');
+}
+
+function openRegModal(idx) {
+  editingRegIdx = idx;
+  const r = regulations[idx];
+  document.getElementById('reg-modal-title').textContent = idx === -1 ? '새 조항 추가' : `조항 편집: ${r.no}`;
+  document.getElementById('reg-edit-no').value = r ? r.no : '';
+  document.getElementById('reg-edit-title').value = r ? r.title : '';
+  document.getElementById('reg-edit-body').value = r ? r.body : '';
+  document.getElementById('reg-delete-btn').style.display = idx === -1 ? 'none' : '';
+  document.getElementById('reg-modal').classList.add('open');
+}
+
+function addRegArticle() { openRegModal(-1); editingRegIdx = -1; }
+
+function closeRegModal() { document.getElementById('reg-modal').classList.remove('open'); }
+
+function saveRegArticle() {
+  const no    = document.getElementById('reg-edit-no').value.trim();
+  const title = document.getElementById('reg-edit-title').value.trim();
+  const body  = document.getElementById('reg-edit-body').value;
+  if (!no||!title) { toast('조항 번호와 제목을 입력하세요.','info'); return; }
+  if (editingRegIdx === -1) {
+    regulations.push({no,title,body});
+    toast('조항 추가 완료','success');
+  } else {
+    regulations[editingRegIdx] = {no,title,body};
+    toast('조항 수정 완료','success');
+  }
+  saveRegs(); closeRegModal(); renderRegulation();
+}
+
+function deleteRegArticle() {
+  if (!confirm('이 조항을 삭제하시겠습니까?')) return;
+  regulations.splice(editingRegIdx, 1);
+  saveRegs(); closeRegModal(); renderRegulation();
+  toast('조항 삭제','info');
+}
+
+// ═══════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════
+function exportCSV() {
+  if (!records.length) { toast('내보낼 데이터가 없습니다.','info'); return; }
+  const cols = ['EO Number','변경 제목','대표 완제품','담당자','변경유형','우선순위','EO 발행일','완료예정일','진행상태','Risk','체크완료율'];
+  const rows = records.map(r => {
+    const risk = calcRisk(r);
+    return [r.no,r.title||'',r.product||'',r.manager||'',r.type||'',r.priority||'',
+            r.date||'',r.due||'',r.status||'',risk.score!==null?risk.cat:'',checkPct(r)+'%'];
+  });
+  const csv = [cols,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='EO_이력_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV 내보내기 완료','success');
+}
+
+// ═══════════════════════════════════
+// TOAST / INIT
+// ═══════════════════════════════════
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast-msg ${type}`; el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(()=>el.remove(), 3000);
+}
+
+function updateDate() {
+  const n = new Date();
+  document.getElementById('now-date').textContent =
+    n.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}) + '  ' +
+    n.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// INIT
+renderDashboard();
+renderList();
+renderRegulation();
+buildCheckSections({});
+updateCSProgress();
+updateDate();
+setInterval(updateDate, 30000);
+document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+</script>
+</body>
+</html>
