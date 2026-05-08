@@ -32,6 +32,7 @@ h1{font-size:16px;font-weight:600}
 .prod-btn.pk.on{background:var(--blue)}
 .prod-btn.dd.on{background:var(--teal)}
 .prod-btn.ep.on{background:var(--purple)}
+.prod-btn.pcb.on{background:#B45309}
 .prod-divider{width:1px;height:20px;background:var(--bd)}
 .prod-stats{display:flex;gap:12px;margin-left:auto;flex-wrap:wrap}
 .ps{font-size:12px;color:var(--tx2)}
@@ -109,6 +110,8 @@ tr:hover td{background:#fafaf9}
 .bom-edit-btn{display:none}
 .admin-mode .bom-edit-btn{display:inline-flex}
 @media(max-width:700px){.stats{grid-template-columns:1fr 1fr}.fg{grid-template-columns:1fr}.tc{grid-template-columns:1fr}.kpis{grid-template-columns:1fr}}
+
+.pcb-sh-btn.pcb-on { background: var(--blue); color: #fff; border-color: var(--blue); }
 </style>
 </head>
 <body>
@@ -154,6 +157,7 @@ tr:hover td{background:#fafaf9}
   <button class="prod-btn pk"     id="pb-PARKIE" onclick="setProd('PARKIE',this)">&#129302; PARKIE V2.3</button>
   <button class="prod-btn dd"     id="pb-DD90"   onclick="setProd('DD90',this)">&#9881;&#65039; DD90 MVP1</button>
   <button class="prod-btn ep"     id="pb-EPARKIE" onclick="setProd('E-PARKIE',this)">&#9889; 전장품</button>
+  <button class="prod-btn pcb"    id="pb-PCB"     onclick="setProd('PCB',this)">&#9107; DD90 PCB BOM</button>
   <div class="prod-divider"></div>
   <div class="prod-stats" id="prod-stats"></div>
 </div>
@@ -263,6 +267,97 @@ tr:hover td{background:#fafaf9}
   </table></div>
 </div>
 
+
+<!-- PCB 전용 탭 영역 (curProd===PCB 일 때 show) -->
+<div id="pcb-tabs-wrap" style="display:none">
+  <div class="tabs">
+    <button class="tab pcb-tab on" onclick="goPcb('pcb-dashboard',this)">&#128202; 대시보드</button>
+    <button class="tab pcb-tab"    onclick="goPcb('pcb-bom',this)">&#128196; BOM 목록</button>
+    <button class="tab pcb-tab"    onclick="goPcb('pcb-drawings',this)">&#128196; 도면 / 문서</button>
+    <button class="tab pcb-tab"    onclick="goPcb('pcb-orders',this)">&#128722; 발주 현황</button>
+  </div>
+
+  <!-- PCB 대시보드 -->
+  <div id="pcb-dashboard" class="panel on">
+    <div class="stats">
+      <div class="stat"><div class="sl">전체 부품</div><div class="sv prim" id="pcb-s0">199</div><div class="ss">등록 품목 수</div></div>
+      <div class="stat"><div class="sl">실장 부품</div><div class="sv ok"   id="pcb-s1">-</div><div class="ss">DNP 제외</div></div>
+      <div class="stat"><div class="sl">DNP 부품</div><div class="sv warn"  id="pcb-s2">-</div><div class="ss">미실장</div></div>
+      <div class="stat"><div class="sl">사급품</div><div class="sv prim"    id="pcb-s3">-</div><div class="ss">사급 항목</div></div>
+    </div>
+    <div class="tc">
+      <div>
+        <div class="st">시트별 부품 현황</div>
+        <div id="pcb-sheet-ch"></div>
+      </div>
+      <div>
+        <div class="st">사급품 포함 변경 이력</div>
+        <div id="pcb-note-list" style="font-size:12px;color:var(--tx2);line-height:1.8;max-height:200px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PCB BOM 목록 -->
+  <div id="pcb-bom" class="panel" style="display:none">
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn pcb-sh-btn pcb-on" id="pcb-btn-all" onclick="setPcbSheet('ALL',this)">전체 (199)</button>
+        <button class="btn pcb-sh-btn" id="pcb-btn-ctrl" onclick="setPcbSheet('Control',this)">Control (139)</button>
+        <button class="btn pcb-sh-btn" id="pcb-btn-pwr"  onclick="setPcbSheet('Power',this)">Power (60)</button>
+      </div>
+      <div class="sw" style="max-width:260px">
+        <span class="si">&#128269;</span>
+        <input id="pcb-search" type="text" placeholder="Part No. / Designator / 값 검색..." oninput="drawPcbBom()">
+      </div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="pcb-hide-dnp" onchange="drawPcbBom()"> DNP 숨기기
+      </label>
+      <button class="btn" onclick="exportPcbCsv()">&#128228; CSV 내보내기</button>
+      <span id="pcb-count" style="font-size:12px;color:var(--tx2);margin-left:4px"></span>
+    </div>
+    <div class="tw"><table id="tbl-pcb">
+      <thead><tr>
+        <th>No.</th><th>시트</th><th>Part Number</th><th>DNM</th>
+        <th>Qty</th><th>Designator</th><th>Value</th><th>Tolerance</th><th>Size</th><th>사급품</th><th>비고</th><th>현재고</th><th></th>
+      </tr></thead>
+      <tbody id="tb-pcb"></tbody>
+    </table></div>
+  </div>
+
+  <!-- PCB 도면/문서 -->
+  <div id="pcb-drawings" class="panel" style="display:none">
+    <div class="upz" id="pcb-dz"
+      onclick="document.getElementById('pcb-fi').click()"
+      ondragover="event.preventDefault();this.classList.add('ov')"
+      ondragleave="this.classList.remove('ov')"
+      ondrop="event.preventDefault();this.classList.remove('ov');addPcbFiles(event.dataTransfer.files)">
+      <div style="font-size:34px;margin-bottom:10px">&#128196;</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:5px">PCB 도면 / 문서 업로드</div>
+      <div style="font-size:12px;color:var(--tx2)">클릭하거나 파일을 드래그하세요 &middot; PDF, DWG, DXF, STEP 지원</div>
+      <input type="file" id="pcb-fi" accept=".pdf,.dwg,.dxf,.stp,.step" multiple style="display:none" onchange="addPcbFiles(this.files)">
+    </div>
+    <div class="st">등록된 도면 &middot; 문서</div>
+    <div id="pcb-doc-list"><p style="text-align:center;color:var(--tx2);padding:2rem;font-size:13px">아직 업로드된 파일이 없습니다.</p></div>
+  </div>
+
+  <!-- PCB 발주 현황 -->
+  <div id="pcb-orders" class="panel" style="display:none">
+    <div class="toolbar">
+      <span style="font-size:13px;font-weight:500">사급품 및 발주 대상 부품</span>
+      <button class="btn" onclick="exportPcbOrderCsv()" style="margin-left:auto">&#128228; CSV 내보내기</button>
+    </div>
+    <div class="kpis" id="pcb-kpis"></div>
+    <div class="tw"><table id="tbl-pcb-ord">
+      <thead><tr>
+        <th>No.</th><th>시트</th><th>Part Number</th><th>Value</th>
+        <th>Qty</th><th>Designator</th><th>Size</th><th>사급품</th>
+        <th>발주수량</th><th>발주처</th><th>비고</th>
+      </tr></thead>
+      <tbody id="tb-pcb-ord"></tbody>
+    </table></div>
+  </div>
+</div>
+
 </div>
 
 <!-- 재고 수정 모달 -->
@@ -289,6 +384,34 @@ tr:hover td{background:#fafaf9}
     <div class="mf">
       <button class="btn" onclick="closeSmod()">취소</button>
       <button class="btn bb" onclick="saveStock()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- PCB 재고 수정 모달 -->
+<div class="mbg" id="pcb-smod">
+  <div class="modal" style="max-width:400px">
+    <h2 id="pcb-smod-title">PCB 재고 수정</h2>
+    <div style="background:var(--bg2);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--tx2);line-height:1.6" id="pcb-smod-info"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div class="fr">
+        <label style="font-size:13px;font-weight:600;color:var(--tx);display:block;margin-bottom:6px">현재 재고</label>
+        <input id="pcb-s-cur" type="number" min="0" style="font-size:20px;font-weight:700;text-align:center;height:52px;border-radius:8px;border:2px solid var(--blue)">
+      </div>
+      <div class="fr">
+        <label style="font-size:13px;font-weight:600;color:var(--tx);display:block;margin-bottom:6px">안전 재고</label>
+        <input id="pcb-s-safe" type="number" min="0" style="font-size:20px;font-weight:700;text-align:center;height:52px;border-radius:8px">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+      <button class="btn bsm" onclick="adjPcbStock(-10)" style="justify-content:center">-10</button>
+      <button class="btn bsm" onclick="adjPcbStock(-1)"  style="justify-content:center">-1</button>
+      <button class="btn bsm" onclick="adjPcbStock(+1)"  style="justify-content:center">+1</button>
+      <button class="btn bsm" onclick="adjPcbStock(+10)" style="justify-content:center">+10</button>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="closePcbSmod()">취소</button>
+      <button class="btn bb" onclick="savePcbStock()">저장</button>
     </div>
   </div>
 </div>
@@ -552,12 +675,35 @@ function setProd(prod, btn){
     ALL:'PARKIE V2.3 · DD90 MVP1 · 전장품 · 전체 648개 부품',
     PARKIE:'PARKIE V2.3 — 저상형 주차로봇 · 418개 부품',
     DD90:'DD90 MVP1 — 구동모듈 · 164개 부품',
-    'E-PARKIE':'전장품 BOM · PARKIE V2.3 · 66개 부품'
+    'E-PARKIE':'전장품 BOM · PARKIE V2.3 · 66개 부품',
+    PCB:'DD90 PCB BOM · Control 139개 · Power 60개 · 총 199개 부품'
   };
   document.getElementById('hdr-sub').textContent = titles[prod]||prod;
-  var active = document.querySelector('.panel.on');
-  if(active){
-    var id = active.id.replace('pg-','');
+
+  var mainTabs   = document.querySelector('.tabs');
+  var mainPanels = document.querySelectorAll('#pg-dashboard,#pg-inventory,#pg-bom,#pg-drawings,#pg-orders');
+  var pcbWrap    = document.getElementById('pcb-tabs-wrap');
+
+  if(prod === 'PCB'){
+    // 기존 탭/패널 숨기기
+    mainTabs.style.display = 'none';
+    mainPanels.forEach(function(p){ p.style.display='none'; });
+    // PCB 탭 영역 보이기
+    pcbWrap.style.display = 'block';
+    drawPcbDash();
+    return;
+  }
+
+  // 일반 제품: PCB 영역 숨기고 기존 탭 복구
+  mainTabs.style.display = '';
+  mainPanels.forEach(function(p){ p.style.display=''; });
+  pcbWrap.style.display = 'none';
+
+  var active = document.querySelector('#pg-dashboard,#pg-inventory,#pg-bom,#pg-drawings,#pg-orders');
+  // 활성 패널 유지하며 데이터 갱신
+  var onPanel = document.querySelector('.panel.on');
+  if(onPanel){
+    var id = onPanel.id.replace('pg-','');
     if(id==='dashboard') drawDash();
     else if(id==='inventory') drawInv();
     else if(id==='bom') drawBOM();
@@ -574,7 +720,8 @@ function updateProdStats(){
   document.getElementById('prod-stats').innerHTML =
     '<span class="ps"><b style="color:var(--blue)">'+pk+'</b> PARKIE &middot; '+
     '<b style="color:var(--teal)">'+dd+'</b> DD90 &middot; '+
-    '<b style="color:var(--purple)">'+ep+'</b> 전장품</span> '+
+    '<b style="color:var(--purple)">'+ep+'</b> 전장품 &middot; '+
+    '<b style="color:#B45309">199</b> PCB</span> '+
     '<span class="ps">품절위험 <b style="color:var(--red)">'+ct+'</b>건</span>';
 }
 
@@ -582,13 +729,28 @@ function updateProdStats(){
 function go(id, btn){
   document.querySelectorAll('.panel').forEach(function(el){ el.classList.remove('on'); });
   document.getElementById('pg-'+id).classList.add('on');
-  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+  document.querySelectorAll('.tab:not(.pcb-tab)').forEach(function(t){ t.classList.remove('on'); });
   btn.classList.add('on');
   if(id==='inventory') drawInv();
   else if(id==='bom') drawBOM();
   else if(id==='orders') drawOrd();
   else if(id==='drawings') drawDocs();
   else drawDash();
+}
+
+// ── PCB 탭 전환 ──────────────────────────────────────────
+function goPcb(id, btn){
+  document.querySelectorAll('#pcb-tabs-wrap .panel').forEach(function(el){
+    el.style.display='none'; el.classList.remove('on');
+  });
+  var panel = document.getElementById(id);
+  panel.style.display='block'; panel.classList.add('on');
+  document.querySelectorAll('.pcb-tab').forEach(function(t){ t.classList.remove('on'); });
+  btn.classList.add('on');
+  if(id==='pcb-bom') drawPcbBom();
+  else if(id==='pcb-orders') drawPcbOrders();
+  else if(id==='pcb-drawings') drawPcbDocs();
+  else drawPcbDash();
 }
 
 // ── 대시보드 ─────────────────────────────────────────────
@@ -992,6 +1154,7 @@ function deleteBomItem(){
 
 // ── 초기화 ───────────────────────────────────────────────
 var restored = loadFromStorage();
+loadPcbFromStorage();
 updateProdStats();
 drawDash();
 drawInv();
@@ -1001,6 +1164,472 @@ if(restored){
 } else {
   document.getElementById('save-status').style.display='block';
 }
+
+// ── DD90 PCB BOM ─────────────────────────────────────────
+var PCB_BOM = [
+  {no:'-2',part:'53398-0471',dnm:'DNP',qty:'1',des:'CON1',val:'53398-0471',tol:'*',size:'',sup:'',note:'2025.04.22. / 미사용 (DNP 처리)',sheet:'Control'},
+  {no:'-1',part:'CBR04C120J5GACAUTO',dnm:'*',qty:'2',des:'C1,C2',val:'12pF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'0',part:'CGA3E1X7R1E105K080AC',dnm:'DNP',qty:'1',des:'C3',val:'1uF/25V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'1',part:'CGA4J1X7R1H475K125AC',dnm:'*',qty:'1',des:'C4',val:'4.7uF/50V',tol:'0.1',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'2',part:'CGA2B3X7R1H104K050BB',dnm:'*',qty:'19',des:'C5,C6,C7,C8,C11,C12,C13,C14,C15,C19,C31,C37,C38,C56,C67,C77,C79,C81,C909',val:'0.1uF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'3',part:'CGA3E3X7R1H474K080AB',dnm:'*',qty:'3',des:'C9,C10,C70',val:'0.47uF/50V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'4',part:'C0402C473J4RECAUTO',dnm:'*',qty:'7',des:'C16,C17,C25,C26,C30,C33,C906',val:'47nF/16V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'5',part:'CGA2B2X7R1C224K050BA',dnm:'*',qty:'2',des:'C18,C20',val:'0.22uF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'6',part:'08051A101J4T2A',dnm:'DNP',qty:'2',des:'C21,C23',val:'100pF/100V',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'7',part:'08051A101J4T2A',dnm:'*',qty:'4',des:'C22,C24,C28,C98',val:'100pF/100V',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'8',part:'CGA2B1X7S1C474K050BE',dnm:'*',qty:'1',des:'C27',val:'470nF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'9',part:'CGA3E3X7R1H224K080AB',dnm:'*',qty:'2',des:'C34,C91',val:'0.22uF/50V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'10',part:'06031C472J4T2A',dnm:'DNP',qty:'1',des:'C35',val:'4.7nF/100V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'11',part:'C0603X100J1GACAUTO',dnm:'*',qty:'2',des:'C36,C39',val:'10pF/100V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'12',part:'VJ0402A101JXAAC',dnm:'*',qty:'4',des:'C40,C41,C42,C85',val:'100pF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'13',part:'C0402C221J5GACAUTO',dnm:'*',qty:'1',des:'C43',val:'220pF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'14',part:'KAM15BR72A104KT',dnm:'*',qty:'2',des:'C44,C45',val:'0.1uF/100V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'15',part:'C0603C101J1GACAUTO',dnm:'*',qty:'2',des:'C48,C49',val:'100pF/100V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'16',part:'CL32Y106KCJ6PJE',dnm:'*',qty:'11',des:'C50,C51,C52,C53,C54,C55,C73,C92,C94,C95,C96',val:'10uF/100V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'17',part:'EMF325B7105KNHT',dnm:'*',qty:'1',des:'C57',val:'1uF/16V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'18',part:'12101C225K4T4A',dnm:'*',qty:'2',des:'C60,C65',val:'2.2uF/100V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'19',part:'GCM32EC71E226KE36L',dnm:'*',qty:'1',des:'C61',val:'22uF/25V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'20',part:'06031C222JAT2A',dnm:'*',qty:'1',des:'C62',val:'2.2nF/100V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'21',part:'06035C332J4Z2A',dnm:'*',qty:'1',des:'C63',val:'3.3nF/50V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'22',part:'08051A560J4T2A',dnm:'*',qty:'1',des:'C64',val:'56pF/100V',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'23',part:'12101C475K4T2A',dnm:'*',qty:'2',des:'C68,C910',val:'4.7uF/100V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'24',part:'06033C681K4Z2A',dnm:'*',qty:'1',des:'C69',val:'680pF/16V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'25',part:'GCM32ER71C226KE19L',dnm:'*',qty:'2',des:'C71,C72',val:'22uF/16V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'26',part:'KAM15AR72A103KM',dnm:'',qty:'1',des:'C74',val:'10nF/100V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'27',part:'GCM21BR71H104JA37L',dnm:'*',qty:'1',des:'C75',val:'100nF/50V',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'28',part:'CGA4J1X7R1V225K125AC',dnm:'*',qty:'3',des:'C76,C78,C80',val:'2.2uF/35V',tol:'0.1',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'29',part:'CGA3E1X7R1E105K080AC',dnm:'*',qty:'1',des:'C82',val:'1uF/25V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'30',part:'C0402C223J3RECAUTO7411',dnm:'*',qty:'2',des:'C83,C84',val:'0.022uF/25V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'31',part:'GCM1555C1H470JA16J',dnm:'*',qty:'1',des:'C86',val:'47pF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'32',part:'0402YC472K4T4A',dnm:'*',qty:'1',des:'C87',val:'4.7nF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'33',part:'06035C221J4T2A',dnm:'',qty:'1',des:'C88',val:'220pF/50V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'34',part:'KAM05AR71H272JH',dnm:'*',qty:'1',des:'C89',val:'2.7nF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'35',part:'12061C105K4T2A',dnm:'*',qty:'1',des:'C90',val:'1uF/100V',tol:'0.05',size:'1206',sup:'',note:'',sheet:'Control'},
+  {no:'36',part:'06035C104J4T2A',dnm:'*',qty:'1',des:'C93',val:'0.1uF/50V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'37',part:'CGA2B2NP01H680J050BA',dnm:'DNP',qty:'3',des:'C99,C100,C124',val:'68pF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'38',part:'C0402C680J5GACAUTO',dnm:'DNP',qty:'6',des:'C103,C104,C123,C126,C127,C128',val:'68pF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'39',part:'C0402C104K4RECAUTO',dnm:'*',qty:'6',des:'C111,C114,C115,C116,C908,C912',val:'100nF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'40',part:'0402YC103J4T2A',dnm:'*',qty:'4',des:'C117,C118,C119,C907',val:'10nF/16V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'41',part:'C0402C104J4RECAUTO',dnm:'*',qty:'3',des:'C120,C122,C911',val:'100nF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'42',part:'C3225X7R2A106K250AC',dnm:'*',qty:'1',des:'C901',val:'10uF/100V',tol:'0.05',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'43',part:'C3225X7R2A106K250AC',dnm:'*',qty:'2',des:'C902,C905',val:'10uF/100V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Control'},
+  {no:'44',part:'SZMMSZ4689T1G',dnm:'',qty:'2',des:'DZ1,DZ4',val:'500mW/5.1V',tol:'*',size:'SOD-123-2',sup:'',note:'',sheet:'Control'},
+  {no:'45',part:'SZMMSZ4682T1G',dnm:'*',qty:'1',des:'DZ2',val:'500mW/2.7V',tol:'*',size:'SOD-123-2',sup:'',note:'',sheet:'Control'},
+  {no:'46',part:'HPZR-C15X',dnm:'*',qty:'1',des:'DZ3',val:'HPZR-C15X',tol:'*',size:'SOD-123W-2',sup:'',note:'',sheet:'Control'},
+  {no:'47',part:'SBAV99LT1G',dnm:'*',qty:'2',des:'D1,D2',val:'100V/215mA',tol:'*',size:'SOT-23',sup:'',note:'',sheet:'Control'},
+  {no:'48',part:'SDT5A100SB-13',dnm:'*',qty:'1',des:'D4',val:'SDT5A100SB-13',tol:'*',size:'SMB (DO-214AA)',sup:'',note:'',sheet:'Control'},
+  {no:'49',part:'NRVB140ESFT1G',dnm:'*',qty:'2',des:'D5,D6',val:'40V/1A',tol:'*',size:'SOD-123FL',sup:'',note:'',sheet:'Control'},
+  {no:'50',part:'NSVBAS21HT1G',dnm:'*',qty:'1',des:'D7',val:'250V/200mA',tol:'*',size:'SOD-323',sup:'',note:'',sheet:'Control'},
+  {no:'51',part:'NRVB140ESFT1G',dnm:'DNP',qty:'1',des:'D8',val:'40V/1A',tol:'*',size:'SOD-123FL',sup:'',note:'',sheet:'Control'},
+  {no:'52',part:'SMBJ60CA',dnm:'*',qty:'1',des:'D9',val:'SMBJ60CA',tol:'*',size:'DO214AA',sup:'',note:'',sheet:'Control'},
+  {no:'53',part:'SMF64CA',dnm:'*',qty:'8',des:'D10,D11,D12,D13,D15,D16,D17',val:'SMF64CA',tol:'*',size:'SOD-123-2',sup:'',note:'',sheet:'Control'},
+  {no:'54',part:'SMF64CA',dnm:'DNP',qty:'1',des:'D14,D18',val:'SMF64CA',tol:'*',size:'SOD-123-2',sup:'',note:'2025.04.22. / STO 미사용 (DNP 처리)',sheet:'Control'},
+  {no:'55',part:'GE54522K00',dnm:'*',qty:'1',des:'ECSUPPORT1',val:'GE54522K00',tol:'*',size:'-',sup:'O',note:'2025.04.23. / Cap. 홀더용 플라스틱',sheet:'Control'},
+  {no:'56',part:'EKYC101ELL561MK40S',dnm:'*',qty:'2',des:'EC1,EC2,EC3',val:'560uF/100V',tol:'*',size:'Ø12.5*H40*P5',sup:'O',note:'',sheet:'Control'},
+  {no:'57',part:'삭제',dnm:'*',qty:'',des:'',val:'',tol:'',size:'',sup:'',note:'',sheet:'Control'},
+  {no:'58',part:'NTBLS1D1N08H',dnm:'*',qty:'1',des:'FET1',val:'351A/80V',tol:'*',size:'H-PSOF8L',sup:'',note:'',sheet:'Control'},
+  {no:'59',part:'IPZ40N04S5L-7R4',dnm:'*',qty:'1',des:'FET2',val:'40A/40V',tol:'*',size:'PG-TSDSON-8',sup:'',note:'',sheet:'Control'},
+  {no:'60',part:'9774070960R',dnm:'*',qty:'4',des:'FIX2,FIX4,FIX5,FIX6',val:'9774070960R',tol:'*',size:'3.3P6.0',sup:'',note:'',sheet:'Control'},
+  {no:'61',part:'ACT45B-510-2P-TL003',dnm:'*',qty:'1',des:'FT1',val:'51uH/200mA',tol:'*',size:'4.5*3.2*2.8',sup:'',note:'',sheet:'Control'},
+  {no:'62',part:'FTSH-105-01-L-DV-K',dnm:'*',qty:'1',des:'J1',val:'FTSH-105-01-L-DV-K',tol:'*',size:'FTSH-105-01-L-DV-K',sup:'',note:'',sheet:'Control'},
+  {no:'63',part:'GE53024P00',dnm:'*',qty:'1',des:'J2',val:'REPS_VEHICLE_JUNCTION_SLOT',tol:'*',size:'REPS_VEHICLE_JUNCTION_SLOT',sup:'O',note:'2025.04.24. / Main Conn. 이름 변경',sheet:'Control'},
+  {no:'64',part:'M50-3610642',dnm:'*',qty:'4',des:'J3,J4,J5,J6',val:'M50-3610642',tol:'*',size:'CONN HDR 1.27MM 12POS',sup:'',note:'',sheet:'Control'},
+  {no:'65',part:'REPS_PWR_SLOT',dnm:'DNP',qty:'1',des:'J7',val:'REPS_PWR_SLOT',tol:'*',size:'REPS_PWR_SLOT_STRAIGHT',sup:'',note:'',sheet:'Control'},
+  {no:'66',part:'PWR_SLOT_M5',dnm:'DNP',qty:'2',des:'J8,J9',val:'PWR_SLOT_M5',tol:'*',size:'PWR_SLOT_M5',sup:'',note:'',sheet:'Control'},
+  {no:'67',part:'LESM0301R5P2DV1E',dnm:'*',qty:'1',des:'L1',val:'2.2uH/30A',tol:'*',size:'21*11.3*8.7',sup:'O',note:'',sheet:'Control'},
+  {no:'68',part:'SRP7028A-330M',dnm:'*',qty:'1',des:'L2',val:'33uH/2.5A',tol:'*',size:'7.3*6.6*2.8',sup:'',note:'',sheet:'Control'},
+  {no:'69',part:'SRP4020TA-4R7M',dnm:'*',qty:'1',des:'L3',val:'4.7uH/3.5A',tol:'0.2',size:'4.45*4.06*1.8',sup:'',note:'',sheet:'Control'},
+  {no:'70',part:'SRP4020TA-2R2M',dnm:'*',qty:'1',des:'L4',val:'2.2uH/6A',tol:'0.2',size:'4.45*4.06*1.8',sup:'',note:'',sheet:'Control'},
+  {no:'71',part:'RC0603FR-105R1L',dnm:'*',qty:'1',des:'R1',val:'5R1',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'72',part:'RCC04021K50FKED',dnm:'*',qty:'1',des:'R2',val:'1.5k',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'73',part:'RC0402FR-075K1L',dnm:'DNP',qty:'3',des:'R3,R10,R12',val:'5K1',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'74',part:'RC0402FR-0710KL',dnm:'*',qty:'8',des:'R4,R6,R7,R8,R9,R37,R65,R74',val:'10K',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'75',part:'RC0402FR-075K1L',dnm:'*',qty:'3',des:'R5,R11,R13',val:'5K1',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'76',part:'RC0402FR-074K7L',dnm:'*',qty:'13',des:'R14,R16,R19,R26,R27,R28,R29,R30,R33,R39,R43,R45,R80',val:'4K7',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'77',part:'RC0402FR-0733RL',dnm:'*',qty:'3',des:'R15,R18,R108',val:'33R',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'78',part:'RC0402FR-074K7L',dnm:'DNP',qty:'1',des:'R17',val:'4K7',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'79',part:'RK73G1ERTTP1501F',dnm:'*',qty:'1',des:'R20',val:'1K5',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'80',part:'SG73P2ATTD3003F',dnm:'*',qty:'1',des:'R58',val:'300K',tol:'0.01',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'81',part:'ERA-6AEB304V',dnm:'*',qty:'2',des:'R21,R24',val:'300K',tol:'0.001',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'82',part:'RT0402BRD0720KL',dnm:'*',qty:'2',des:'R22,R25',val:'20K',tol:'0.001',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'83',part:'RC0402FR-073M9L',dnm:'*',qty:'1',des:'R23',val:'3M9',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'84',part:'RC0805FR-7W27KL',dnm:'*',qty:'1',des:'R32',val:'27K',tol:'0.01',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'85',part:'RC0805FR-076K8L',dnm:'*',qty:'1',des:'R34',val:'6K8',tol:'0.01',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'86',part:'RC0805FR-0718KP',dnm:'*',qty:'2',des:'R35,R40',val:'18K',tol:'0.01',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'87',part:'RC0402FR-072K7L',dnm:'*',qty:'1',des:'R36',val:'2K7',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'88',part:'RCS08051M00JNEA',dnm:'*',qty:'2',des:'R42,R57',val:'1M',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'89',part:'RCS080547K0JNEA',dnm:'*',qty:'1',des:'R46',val:'47K',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'90',part:'RC1206FR-075K1L',dnm:'DNP',qty:'2',des:'R47,R48',val:'5.1k',tol:'0.01',size:'1206',sup:'',note:'',sheet:'Control'},
+  {no:'91',part:'RC0402FR-071KL',dnm:'*',qty:'1',des:'R49',val:'1K',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'92',part:'AC0402FR-071K2L',dnm:'*',qty:'1',des:'R50',val:'1K2',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'93',part:'RC0402FR-07240RL',dnm:'*',qty:'1',des:'R51',val:'240R',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'94',part:'RC0402FR-072K2L',dnm:'*',qty:'1',des:'R52',val:'2K2',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'95',part:'RC0603FR-074K7L',dnm:'*',qty:'1',des:'R53',val:'4K7',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'96',part:'ERJ-P06J392V',dnm:'*',qty:'1',des:'R56',val:'3K9',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'97',part:'ERJ-P06F4533V',dnm:'*',qty:'1',des:'R59',val:'453K',tol:'0.01',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'98',part:'SG73G1JTTD4533D',dnm:'*',qty:'1',des:'R60',val:'453K',tol:'0.005',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'99',part:'RP0603FRE07100KL',dnm:'*',qty:'1',des:'R61',val:'100K',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'100',part:'RC0603FR-0749K9L',dnm:'*',qty:'1',des:'R62',val:'49K9',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'101',part:'CRCW0402100KJNEDHP',dnm:'DNP',qty:'1',des:'R63',val:'100K',tol:'0.05',size:'402',sup:'',note:'2025.05.23. 미실장으로 변경',sheet:'Control'},
+  {no:'102',part:'RC0603FR-079R1L',dnm:'*',qty:'1',des:'R66',val:'9R1',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'103',part:'RC0603FR-1022K1L',dnm:'*',qty:'2',des:'R67,R68',val:'22K1',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'104',part:'RC0402FR-072KL',dnm:'*',qty:'1',des:'R69',val:'2K',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'105',part:'RC0603FR-070RL',dnm:'DNP',qty:'2',des:'R70,R71',val:'0R',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'106',part:'RK73B2ATTD623J',dnm:'*',qty:'1',des:'R72',val:'62K',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'107',part:'RK73B2ATTD513J',dnm:'*',qty:'1',des:'R73',val:'51K',tol:'0.05',size:'805',sup:'',note:'',sheet:'Control'},
+  {no:'108',part:'RC0603FR-105R6L',dnm:'*',qty:'1',des:'R75',val:'5R6',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'109',part:'CRCW04025K36FKEDC',dnm:'*',qty:'1',des:'R76',val:'5K36',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'110',part:'RC0402FR-132K4L',dnm:'*',qty:'1',des:'R77',val:'2K4',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'111',part:'RC0402FR-0720KL',dnm:'*',qty:'1',des:'R78',val:'20K',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'112',part:'RC0402FR-07768RL',dnm:'*',qty:'1',des:'R79',val:'768R',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'113',part:'RC0402FR-078K66L',dnm:'*',qty:'1',des:'R81',val:'8K66',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'114',part:'RC0603FR-074K7L',dnm:'*',qty:'3',des:'R82,R84,R109',val:'4.7k',tol:'0.01',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'115',part:'CRGCQ0402J1M0',dnm:'DNP',qty:'1',des:'R85',val:'1M',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'116',part:'CRCW04022R00FKEDHP',dnm:'*',qty:'12',des:'R86,R87,R90,R91,R92,R93,R98,R99,R100,R101,R102,R103',val:'2R',tol:'0.01',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'117',part:'SFR03EZPJ123',dnm:'*',qty:'1',des:'R107',val:'12K',tol:'0.05',size:'603',sup:'',note:'',sheet:'Control'},
+  {no:'118',part:'RK73B1ETTPD103J',dnm:'',qty:'2',des:'R110,R111',val:'10k',tol:'0.05',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'119',part:'3430B2F4K7TDF',dnm:'DNP',qty:'1',des:'R112',val:'4.7K',tol:'0.01',size:'1206',sup:'',note:'2025.04.22. / STO 미사용 (DNP 처리)',sheet:'Control'},
+  {no:'120',part:'9774070243R',dnm:'',qty:'1',des:'SPR_01',val:'9774070243R',tol:'*',size:'',sup:'',note:'',sheet:'Control'},
+  {no:'121',part:'9774070243R',dnm:'DNP',qty:'1',des:'SPR_02',val:'9774070243R',tol:'*',size:'',sup:'',note:'',sheet:'Control'},
+  {no:'123',part:'SMMBTA56LT1G',dnm:'*',qty:'1',des:'TR1',val:'80V/500mV/PNP',tol:'*',size:'SOT-23',sup:'',note:'',sheet:'Control'},
+  {no:'124',part:'SMMBTA06LT1G',dnm:'*',qty:'1',des:'TR2',val:'80V/500mV/NPN',tol:'*',size:'SOT-23',sup:'',note:'',sheet:'Control'},
+  {no:'125',part:'SAK-TC234LP-32F200N AC',dnm:'*',qty:'1',des:'U1',val:'SAK-TC234LP-32F200N AC',tol:'*',size:'TQFP-144',sup:'O',note:'',sheet:'Control'},
+  {no:'126',part:'74LVC1G11GW',dnm:'*',qty:'1',des:'U2',val:'74LVC1G11GW',tol:'*',size:'TSSOP6',sup:'',note:'',sheet:'Control'},
+  {no:'127',part:'TJA1042T/3',dnm:'*',qty:'1',des:'U3',val:'TJA1042T',tol:'*',size:'SO8',sup:'',note:'',sheet:'Control'},
+  {no:'128',part:'TLE4250-2G',dnm:'*',qty:'3',des:'U4,U7,U10',val:'TLE4250-2G',tol:'*',size:'PG-SCT595-5',sup:'',note:'',sheet:'Control'},
+  {no:'129',part:'LM5012QDDARQ1',dnm:'*',qty:'1',des:'U6',val:'LM5012QDDARQ1',tol:'*',size:'SOIC-8',sup:'',note:'',sheet:'Control'},
+  {no:'130',part:'A4411KLVTR-T',dnm:'*',qty:'1',des:'U8',val:'A4411KLVTR-T',tol:'*',size:'38-TFSOP',sup:'O',note:'',sheet:'Control'},
+  {no:'131',part:'25LC010AT-E/OT',dnm:'*',qty:'1',des:'U9',val:'25LC010AT-E/OT',tol:'*',size:'SOT23-6',sup:'',note:'',sheet:'Control'},
+  {no:'132',part:'FOD817S',dnm:'DNP',qty:'1',des:'U11',val:'FOD817S',tol:'*',size:'4-SMD, Gull Wing',sup:'',note:'2025.04.22. / STO 미사용 (DNP 처리)',sheet:'Control'},
+  {no:'133',part:'FLX0005WP',dnm:'*',qty:'3',des:'V1,V4,V5',val:'FLX0005WP',tol:'*',size:'402',sup:'',note:'',sheet:'Control'},
+  {no:'134',part:'VG181256U111DP',dnm:'*',qty:'1',des:'V9',val:'65V/500A',tol:'*',size:'1812',sup:'',note:'',sheet:'Control'},
+  {no:'135',part:'NX2016SA_20MHz',dnm:'*',qty:'1',des:'X1',val:'Crystal',tol:'50ppm',size:'2.0*1.6*0.45MM',sup:'O',note:'',sheet:'Control'},
+  {no:'136',part:'SZMMSZ5248BT1G',dnm:'DNP',qty:'2',des:'ZD1,ZD2',val:'SZMMSZ5248BT1G',tol:'*',size:'SOD123',sup:'',note:'',sheet:'Control'},
+  {no:'1',part:'08051A101J4T2A',dnm:'DNP',qty:'3',des:'C1,C2,C9',val:'100pF/100V',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'2',part:'08051A101J4T2A',dnm:'*',qty:'4',des:'C3,C6,C33,C34',val:'100pF/100V',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'3',part:'CGA3E1X7R1E105K080AC',dnm:'*',qty:'1',des:'C4',val:'1uF/25V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'4',part:'C0402C101K5GACAUTO',dnm:'*',qty:'2',des:'C5,C8',val:'100pF/50V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'5',part:'CGA2B3X7R1H104K050BB',dnm:'*',qty:'2',des:'C7,C29',val:'0.1uF/50V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'6',part:'08051A101J4T2A',dnm:'DNP',qty:'1',des:'C10',val:'100pF/100V',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'7',part:'CL32Y106KCJ6PJE',dnm:'*',qty:'4',des:'C11,C15,C25,C44',val:'10uF/100V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Power'},
+  {no:'8',part:'KAF21KR72A474KU',dnm:'*',qty:'3',des:'C12,C17,C23',val:'0.47uF/100V',tol:'0.1',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'9',part:'08051C223K4Z4A',dnm:'*',qty:'6',des:'C13,C14,C18,C19,C24,C26',val:'22nF/100V',tol:'0.1',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'10',part:'C0402C221J5GACAUTO',dnm:'*',qty:'3',des:'C16,C20,C917',val:'220pF/50V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'11',part:'C1206C224J1RECAUTO',dnm:'*',qty:'2',des:'C21,C43',val:'220nF/100V',tol:'0.05',size:'1206',sup:'',note:'',sheet:'Power'},
+  {no:'12',part:'C1210C225J1RACAUTO',dnm:'*',qty:'1',des:'C22',val:'2.2uF/100V',tol:'0.05',size:'1210',sup:'',note:'',sheet:'Power'},
+  {no:'13',part:'CGA2B1X7S1C474K050BE',dnm:'*',qty:'1',des:'C27',val:'470nF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'14',part:'KAM15BR72A104KT',dnm:'*',qty:'3',des:'C35,C36,C916',val:'100nF/100V',tol:'0.1',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'15',part:'06035C222J4Z2A',dnm:'*',qty:'6',des:'C37,C38,C39,C40,C41,C42',val:'2.2nF/50V',tol:'0.05',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'16',part:'04021C101KAT2A',dnm:'*',qty:'6',des:'C45,C46,C47,C48,C918,C919',val:'100pF/100V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'17',part:'CGA2B1X7R1C104K050BC',dnm:'*',qty:'5',des:'C49,C52,C53,C54,C921',val:'100nF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'18',part:'C0402C103K4RECAUTO',dnm:'*',qty:'4',des:'C55,C56,C57,C920',val:'10nF/16V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'19',part:'CGA2B2NP01H680J050BA',dnm:'DNP',qty:'6',des:'C58,C59,C60,C61,C63,C65',val:'68pF/50V',tol:'0.05',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'20',part:'CL32Y106KCJ6PJE',dnm:'DNP',qty:'8',des:'C903,C904,C906,C908,C909,C910,C911,C912',val:'10uF/100V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Power'},
+  {no:'21',part:'CL32Y106KCJ6PJE',dnm:'*',qty:'4',des:'C907,C913,C914,C915',val:'10uF/100V',tol:'0.1',size:'1210',sup:'',note:'',sheet:'Power'},
+  {no:'22',part:'CL21B106KPQNNNE',dnm:'*',qty:'3',des:'C922,C923,C924',val:'10uF/10V',tol:'0.1',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'23',part:'C1005X7R1H104K050BE',dnm:'*',qty:'1',des:'C925',val:'100nF/50V',tol:'0.1',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'24',part:'SS2FH10HM3/H',dnm:'*',qty:'7',des:'D1,D2,D3,D4,D5,D6,D7',val:'SS2FH10HM3/H',tol:'*',size:'DO-219AB-2',sup:'',note:'',sheet:'Power'},
+  {no:'26',part:'SMF64CA',dnm:'DNP',qty:'2',des:'D13,D15',val:'SMF64CA',tol:'*',size:'SOD-123-2',sup:'',note:'',sheet:'Power'},
+  {no:'27',part:'SMF64CA',dnm:'*',qty:'2',des:'D14,D16',val:'SMF64CA',tol:'*',size:'SOD-123-2',sup:'',note:'',sheet:'Power'},
+  {no:'28',part:'IPT026N12NM6ATMA1',dnm:'-',qty:'6',des:'FET1,FET2,FET3,FET4,FET5,FET6',val:'23A(Ta), 224A(Tc)/120 V',tol:'*',size:'H-PSOF8L',sup:'',note:'',sheet:'Power'},
+  {no:'29',part:'9774070960R',dnm:'DNP',qty:'4',des:'FIX1,FIX2,FIX7,FIX9',val:'9774070960R',tol:'*',size:'3.3P6.0',sup:'',note:'',sheet:'Power'},
+  {no:'30',part:'74650195R',dnm:'*',qty:'2',des:'J1,J2',val:'*',tol:'*',size:'CONNL_WURTH_74650195R_7H20N',sup:'',note:'',sheet:'Power'},
+  {no:'31',part:'삭제',dnm:'',qty:'',des:'',val:'',tol:'',size:'',sup:'',note:'',sheet:'Power'},
+  {no:'32',part:'REPS_TAS_JUNCTION_HOLE',dnm:'DNP',qty:'1',des:'J3',val:'*',tol:'*',size:'hdrv_eps_tas_5x2n',sup:'',note:'',sheet:'Power'},
+  {no:'33',part:'M50-4300645',dnm:'*',qty:'4',des:'J4,J5,J6,J7',val:'M50-4300645',tol:'*',size:'CONNS_HRW_M50-4300645_4H85-6X2N',sup:'',note:'',sheet:'Power'},
+  {no:'34',part:'1719101-1',dnm:'*',qty:'3',des:'J8,J9,J10',val:'1719101-1',tol:'*',size:'CONNL_TE_1719101-3N',sup:'',note:'',sheet:'Power'},
+  {no:'35',part:'SD25-101-R',dnm:'*',qty:'1',des:'L1',val:'100uH/670mA',tol:'0.2',size:'10.2*10.3*4.8',sup:'',note:'',sheet:'Power'},
+  {no:'36',part:'BVB-Z-R0005-1.0',dnm:'',qty:'3',des:'RS1,RS2,RS3',val:'0.5mR/9W',tol:'0.01',size:'2725',sup:'',note:'',sheet:'Power'},
+  {no:'37',part:'CRCW0402470RJNEDHP',dnm:'*',qty:'1',des:'R1',val:'470R',tol:'0.05',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'38',part:'ERJ-PA2J152X',dnm:'*',qty:'1',des:'R2',val:'1K5',tol:'0.05',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'39',part:'5.1R, 1%, 0603',dnm:'*',qty:'6',des:'R3,R10,R21,R25,R7,R16',val:'5.1R',tol:'0.01',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'40',part:'RCS08051R00JNEA',dnm:'*',qty:'1',des:'R4',val:'1R',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'41',part:'ERJ-PA3J102V',dnm:'*',qty:'6',des:'R5,R8,R14,R18,R23,R26',val:'1K',tol:'0.05',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'42',part:'RCS08051R00JNEA',dnm:'*',qty:'5',des:'R6,R11,R15,R22,R24',val:'1R',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'43',part:'삭제',dnm:'',qty:'',des:'',val:'',tol:'',size:'',sup:'',note:'',sheet:'Power'},
+  {no:'44',part:'RC0603FR-0733RL',dnm:'*',qty:'3',des:'R9,R17,R61',val:'33R',tol:'0.01',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'45',part:'RC0603FR-7W10RL',dnm:'*',qty:'6',des:'R12,R13,R19,R20,R59,R60',val:'10R',tol:'0.01',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'46',part:'CRCW04022R00FKEDHP',dnm:'*',qty:'8',des:'R27,R29,R31,R33,R41,R42,R43,R44',val:'2R',tol:'0.01',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'47',part:'RCS080510K0JNEA',dnm:'*',qty:'2',des:'R39,R40',val:'10K',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'48',part:'RC0402FR-071KL',dnm:'*',qty:'1',des:'R49',val:'1K',tol:'0.01',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'49',part:'RK73B2ATTD104J',dnm:'*',qty:'1',des:'R51',val:'100k',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'50',part:'RCS080510R0JNEA',dnm:'*',qty:'1',des:'R52',val:'10R',tol:'0.05',size:'805',sup:'',note:'',sheet:'Power'},
+  {no:'51',part:'1R, 1%, 0603',dnm:'*',qty:'6',des:'R53,R54,R55,R56,R57,R58',val:'1R',tol:'0.01',size:'603',sup:'',note:'',sheet:'Power'},
+  {no:'52',part:'CRCW0402100KJNEDHP',dnm:'*',qty:'2',des:'R62,R63',val:'100K',tol:'0.05',size:'402',sup:'',note:'',sheet:'Power'},
+  {no:'53',part:'9774070243R',dnm:'DNP',qty:'1',des:'SPR_01',val:'9774070243R',tol:'*',size:'',sup:'',note:'',sheet:'Power'},
+  {no:'54',part:'9774070243R',dnm:'*',qty:'1',des:'SPR_02',val:'9774070243R',tol:'*',size:'',sup:'',note:'',sheet:'Power'},
+  {no:'59',part:'LMT87QDCKRQ1',dnm:'*',qty:'1',des:'U1',val:'LMT87QDCKRQ1',tol:'*',size:'SC70-5',sup:'',note:'',sheet:'Power'},
+  {no:'60',part:'AMT49100KJPTR-A-3',dnm:'*',qty:'1',des:'U2',val:'AMT49100KJPTR-A-3',tol:'*',size:'LQFP-48',sup:'',note:'',sheet:'Power'},
+  {no:'61',part:'AD8417WHRMZ',dnm:'',qty:'3',des:'U3,U12, U4',val:'AD8417WHRMZ',tol:'*',size:'MSOP8',sup:'',note:'',sheet:'Power'},
+  {no:'63',part:'A33110KLEATR',dnm:'*',qty:'1',des:'U9',val:'A33110KLEATR',tol:'*',size:'TSSOP-14',sup:'',note:'',sheet:'Power'},
+  {no:'64',part:'SZMMSZ5248BT1G',dnm:'DNP',qty:'12',des:'ZD1,ZD2,ZD3,ZD4,ZD5,ZD6,ZD7,ZD8,ZD9,ZD10,ZD11,ZD12',val:'SZMMSZ5248BT1G',tol:'*',size:'SOD123',sup:'',note:'',sheet:'Power'},
+  {no:'65',part:'SMBJ5373B-TP',dnm:'*',qty:'1',des:'ZD13',val:'SMBJ5373B-TP',tol:'*',size:'DO-214AA-2',sup:'',note:'',sheet:'Power'}
+];
+var curPcbSheet = 'ALL';
+var pcbDocs = [];
+
+function setPcbSheet(sheet, btn) {
+  curPcbSheet = sheet;
+  document.querySelectorAll('.pcb-sh-btn').forEach(function(b){ b.classList.remove('pcb-on'); });
+  btn.classList.add('pcb-on');
+  drawPcbBom();
+}
+
+// ── PCB 재고 수정 ─────────────────────────────────────────
+var PCB_LS_KEY = 'pcb_bom_stock_v1';
+var pcbSmodKey = null; // 'part|sheet'
+
+function savePcbToStorage(){
+  var stockMap = {};
+  PCB_BOM.forEach(function(r){
+    var key = r.part + '|' + r.sheet;
+    stockMap[key] = {stock: r.stock||0, safe_stock: r.safe_stock||0};
+  });
+  try { localStorage.setItem(PCB_LS_KEY, JSON.stringify(stockMap)); } catch(e){}
+}
+
+function loadPcbFromStorage(){
+  try {
+    var raw = localStorage.getItem(PCB_LS_KEY);
+    if(!raw) return false;
+    var sm = JSON.parse(raw);
+    PCB_BOM.forEach(function(r){
+      var key = r.part + '|' + r.sheet;
+      if(sm[key]){
+        r.stock = sm[key].stock;
+        r.safe_stock = sm[key].safe_stock;
+      } else {
+        if(r.stock == null) r.stock = 0;
+        if(r.safe_stock == null) r.safe_stock = 0;
+      }
+    });
+    return true;
+  } catch(e){ return false; }
+}
+
+function openPcbSmod(part, sheet){
+  var r = PCB_BOM.find(function(r){ return r.part===part && r.sheet===sheet; });
+  if(!r) return;
+  pcbSmodKey = part + '|' + sheet;
+  document.getElementById('pcb-smod-title').textContent = '재고 수정 — ' + r.part;
+  document.getElementById('pcb-smod-info').innerHTML =
+    '<b>시트:</b> '+r.sheet+'&nbsp;&nbsp;<b>Value:</b> '+(r.val||'—')+'<br><b>Designator:</b> '+(r.des||'—')+'&nbsp;&nbsp;<b>Size:</b> '+(r.size||'—');
+  document.getElementById('pcb-s-cur').value = r.stock || 0;
+  document.getElementById('pcb-s-safe').value = r.safe_stock || 0;
+  document.getElementById('pcb-smod').classList.add('on');
+  setTimeout(function(){ document.getElementById('pcb-s-cur').select(); }, 100);
+}
+
+function adjPcbStock(d){ var inp=document.getElementById('pcb-s-cur'); inp.value=Math.max(0,(parseInt(inp.value)||0)+d); }
+function closePcbSmod(){ document.getElementById('pcb-smod').classList.remove('on'); pcbSmodKey=null; }
+
+function savePcbStock(){
+  if(!pcbSmodKey) return;
+  var parts_key = pcbSmodKey.split('|');
+  var r = PCB_BOM.find(function(r){ return r.part===parts_key[0] && r.sheet===parts_key[1]; });
+  if(!r) return;
+  r.stock = Math.max(0, parseInt(document.getElementById('pcb-s-cur').value)||0);
+  r.safe_stock = Math.max(0, parseInt(document.getElementById('pcb-s-safe').value)||0);
+  closePcbSmod();
+  savePcbToStorage();
+  drawPcbBom();
+  drawPcbDash();
+  showToast('PCB 재고 저장 완료', '#3B6D11');
+}
+
+document.getElementById('pcb-smod').addEventListener('click', function(e){
+  if(e.target === e.currentTarget) closePcbSmod();
+});
+
+
+function drawPcbDash() {
+  var total = PCB_BOM.filter(function(r){ return r.part && r.part !== '삭제'; }).length;
+  var dnp   = PCB_BOM.filter(function(r){ return r.dnm === 'DNP'; }).length;
+  var mount = PCB_BOM.filter(function(r){ return r.dnm !== 'DNP' && r.part && r.part !== '삭제'; }).length;
+  var sup   = PCB_BOM.filter(function(r){ return r.sup === 'O'; }).length;
+  document.getElementById('pcb-s0').textContent = total;
+  document.getElementById('pcb-s1').textContent = mount;
+  document.getElementById('pcb-s2').textContent = dnp;
+  document.getElementById('pcb-s3').textContent = sup;
+
+  // 시트별 현황 바 차트
+  var ctrl = PCB_BOM.filter(function(r){ return r.sheet==='Control' && r.part && r.part!=='삭제'; }).length;
+  var pwr  = PCB_BOM.filter(function(r){ return r.sheet==='Power'   && r.part && r.part!=='삭제'; }).length;
+  document.getElementById('pcb-sheet-ch').innerHTML =
+    '<div style="margin-top:8px">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+      '<span style="font-size:12px;width:60px;color:var(--tx2)">Control</span>'+
+      '<div style="flex:1;background:var(--bd);border-radius:4px;height:14px;overflow:hidden">'+
+        '<div style="width:'+(ctrl/total*100).toFixed(0)+'%;background:var(--blue);height:100%;border-radius:4px"></div></div>'+
+      '<span style="font-size:12px;font-weight:600;color:var(--blue)">'+ctrl+'</span></div>'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+      '<span style="font-size:12px;width:60px;color:var(--tx2)">Power</span>'+
+      '<div style="flex:1;background:var(--bd);border-radius:4px;height:14px;overflow:hidden">'+
+        '<div style="width:'+(pwr/total*100).toFixed(0)+'%;background:var(--teal);height:100%;border-radius:4px"></div></div>'+
+      '<span style="font-size:12px;font-weight:600;color:var(--teal)">'+pwr+'</span></div>'+
+    '</div>';
+
+  // 변경 이력 (note가 있는 항목)
+  var notes = PCB_BOM.filter(function(r){ return r.note && r.note.trim(); });
+  document.getElementById('pcb-note-list').innerHTML = notes.length
+    ? notes.map(function(r){
+        return '<div style="padding:4px 0;border-bottom:0.5px solid var(--bd)">'+
+          '<span class="badge" style="background:'+(r.sheet==='Control'?'var(--blue)':'var(--teal)')+';color:#fff;font-size:9px;margin-right:4px">'+r.sheet+'</span>'+
+          '<span class="mono" style="font-size:11px">'+r.part+'</span> '+
+          '<span style="color:var(--tx)">'+r.note+'</span></div>';
+      }).join('')
+    : '<p style="color:var(--tx2)">변경 이력 없음</p>';
+}
+
+// ── PCB BOM 목록 ──────────────────────────────────────────
+function drawPcbBom() {
+  var q = (document.getElementById('pcb-search').value||'').toLowerCase();
+  var hideDnp = document.getElementById('pcb-hide-dnp').checked;
+  var list = PCB_BOM.filter(function(r) {
+    if(!r.part || r.part==='삭제') return false;
+    if(curPcbSheet !== 'ALL' && r.sheet !== curPcbSheet) return false;
+    if(hideDnp && r.dnm === 'DNP') return false;
+    if(!q) return true;
+    return (r.part+r.des+r.val+r.note).toLowerCase().indexOf(q) >= 0;
+  });
+  document.getElementById('pcb-count').textContent = list.length + '개 항목';
+  var sheetColor = {'Control':'var(--blue)','Power':'var(--teal)'};
+  document.getElementById('tb-pcb').innerHTML = list.map(function(r) {
+    var dnmBadge = r.dnm==='DNP'
+      ? '<span class="badge bct">DNP</span>'
+      : '<span class="badge bok">실장</span>';
+    var supBadge = r.sup==='O' ? '<span class="badge" style="background:var(--amber-l);color:var(--amber)">사급</span>' : '';
+    var sc = sheetColor[r.sheet]||'var(--gray)';
+    var stock = r.stock != null ? r.stock : 0;
+    var safeStock = r.safe_stock != null ? r.safe_stock : 0;
+    var stockSt = stock === 0 ? 'crit' : stock < safeStock ? 'warn' : 'ok';
+    var stockBadge = '<span class="badge '+{ok:'bok',warn:'bwn',crit:'bct'}[stockSt]+'" style="font-size:10px">'+stock+'</span>';
+    return '<tr' + (r.dnm==='DNP'?' style="opacity:.55"':'') + '>'+
+      '<td class="mono" style="color:var(--tx2)">' + r.no + '</td>'+
+      '<td><span class="badge" style="background:'+sc+';color:#fff;font-size:10px">'+r.sheet+'</span></td>'+
+      '<td class="mono" style="font-size:11.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="'+r.part+'">'+r.part+'</td>'+
+      '<td>'+dnmBadge+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+r.qty+'</td>'+
+      '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;font-size:11.5px" title="'+r.des+'">'+r.des+'</td>'+
+      '<td style="font-size:12px">'+r.val+'</td>'+
+      '<td style="text-align:center;font-size:12px">'+r.tol+'</td>'+
+      '<td style="text-align:center;font-size:12px">'+r.size+'</td>'+
+      '<td style="text-align:center">'+supBadge+'</td>'+
+      '<td style="font-size:11px;color:var(--tx2);max-width:130px;overflow:hidden;text-overflow:ellipsis" title="'+r.note+'">'+r.note+'</td>'+
+      '<td style="text-align:center">'+stockBadge+'</td>'+
+      '<td style="text-align:center"><button class="btn bsm" onclick="openPcbSmod(\''+r.part+'\',\''+r.sheet+'\')">수정</button></td>'+
+    '</tr>';
+  }).join('') || '<tr><td colspan="13" style="text-align:center;padding:16px;color:var(--tx2)">검색 결과 없음</td></tr>';
+}
+
+// ── PCB 도면/문서 ─────────────────────────────────────────
+function drawPcbDocs() {
+  var el = document.getElementById('pcb-doc-list');
+  if(!pcbDocs.length){ el.innerHTML='<p style="text-align:center;color:var(--tx2);padding:2rem;font-size:13px">아직 업로드된 파일이 없습니다.</p>'; return; }
+  el.innerHTML = pcbDocs.map(function(d,i){
+    return '<div class="di">'+
+      '<div class="dico">&#128196;</div>'+
+      '<div class="dinf"><div class="dn">'+d.name+'</div><div class="dm">'+d.size+' &middot; '+d.date+'</div></div>'+
+      '<div style="display:flex;gap:6px">'+
+        ((d.url?'<a href="'+d.url+'" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0.5px solid var(--bd);border-radius:6px;font-size:12px;text-decoration:none">&#128065;</a>':''))+
+        '<button class="ib" onclick="delPcbDoc('+i+')" style="color:var(--red)">&#128465;</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+function addPcbFiles(files) {
+  Array.from(files).forEach(function(f){
+    var kb = Math.round(f.size/1024);
+    var reader = new FileReader();
+    reader.onload = function(e){
+      pcbDocs.push({name:f.name, size:kb>1024?(kb/1024).toFixed(1)+' MB':kb+' KB', date:new Date().toLocaleDateString('ko-KR'), url:e.target.result});
+      drawPcbDocs();
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+function delPcbDoc(i){ if(confirm('"'+pcbDocs[i].name+'" 을 삭제하시겠습니까?')){ pcbDocs.splice(i,1); drawPcbDocs(); } }
+
+// ── PCB 발주 현황 ─────────────────────────────────────────
+function drawPcbOrders() {
+  var list = PCB_BOM.filter(function(r){ return r.sup==='O' && r.part && r.part!=='삭제'; });
+  var ctrl = list.filter(function(r){ return r.sheet==='Control'; }).length;
+  var pwr  = list.filter(function(r){ return r.sheet==='Power'; }).length;
+  document.getElementById('pcb-kpis').innerHTML =
+    '<div class="kpi"><div class="kl">사급품 합계</div><div class="kv prim">'+list.length+'건</div></div>'+
+    '<div class="kpi"><div class="kl">Control 사급</div><div class="kv" style="color:var(--blue)">'+ctrl+'건</div></div>'+
+    '<div class="kpi"><div class="kl">Power 사급</div><div class="kv" style="color:var(--teal)">'+pwr+'건</div></div>';
+
+  var sheetColor = {'Control':'var(--blue)','Power':'var(--teal)'};
+  document.getElementById('tb-pcb-ord').innerHTML = list.map(function(r){
+    var sc = sheetColor[r.sheet]||'var(--gray)';
+    var ordQtyVal = r.ord_qty != null ? r.ord_qty : r.qty;
+    var supVal    = r.ord_sup || '';
+    return '<tr>'+
+      '<td class="mono" style="color:var(--tx2)">'+r.no+'</td>'+
+      '<td><span class="badge" style="background:'+sc+';color:#fff;font-size:10px">'+r.sheet+'</span></td>'+
+      '<td class="mono" style="font-size:11.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="'+r.part+'">'+r.part+'</td>'+
+      '<td style="font-size:12px">'+r.val+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+r.qty+'</td>'+
+      '<td style="font-size:11.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="'+r.des+'">'+r.des+'</td>'+
+      '<td style="text-align:center;font-size:12px">'+r.size+'</td>'+
+      '<td style="text-align:center"><span class="badge" style="background:var(--amber-l);color:var(--amber)">사급</span></td>'+
+      '<td style="text-align:center">'+
+        '<input type="number" min="1" value="'+ordQtyVal+'" '+
+        'style="width:70px;height:28px;text-align:center;font-weight:600;border-radius:6px;border:1.5px solid var(--blue);padding:0 4px" '+
+        'onchange="savePcbOrdQty(\''+r.part+'\',\''+r.sheet+'\',this.value)">'+
+      '</td>'+
+      '<td>'+
+        '<input type="text" value="'+supVal+'" placeholder="발주처 입력" '+
+        'style="width:130px;height:28px;border-radius:6px;border:1px solid var(--bd);padding:0 6px;font-size:12px" '+
+        'onchange="savePcbSupplier(\''+r.part+'\',\''+r.sheet+'\',this.value)">'+
+      '</td>'+
+      '<td style="font-size:11px;color:var(--tx2)">'+r.note+'</td>'+
+    '</tr>';
+  }).join('') || '<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--tx2)">사급품 없음</td></tr>';
+}
+
+function savePcbOrdQty(part, sheet, val){
+  var r = PCB_BOM.find(function(r){ return r.part===part && r.sheet===sheet; });
+  if(r){ r.ord_qty = Math.max(1, parseInt(val)||1); showToast('발주수량 저장','#3B6D11'); }
+}
+
+function savePcbSupplier(part, sheet, val){
+  var r = PCB_BOM.find(function(r){ return r.part===part && r.sheet===sheet; });
+  if(r){ r.ord_sup = val.trim(); showToast('발주처 저장','#3B6D11'); }
+}
+
+function exportPcbCsv() {
+  var q = (document.getElementById('pcb-search').value||'').toLowerCase();
+  var hideDnp = document.getElementById('pcb-hide-dnp').checked;
+  var list = PCB_BOM.filter(function(r) {
+    if(!r.part || r.part==='삭제') return false;
+    if(curPcbSheet !== 'ALL' && r.sheet !== curPcbSheet) return false;
+    if(hideDnp && r.dnm === 'DNP') return false;
+    if(!q) return true;
+    return (r.part+r.des+r.val+r.note).toLowerCase().indexOf(q) >= 0;
+  });
+  var rows = [['No','Sheet','Part Number','DNM','Qty','Designator','Value','Tolerance','Size','사급품','비고']];
+  list.forEach(function(r){ rows.push([r.no,r.sheet,r.part,r.dnm,r.qty,r.des,r.val,r.tol,r.size,r.sup,r.note]); });
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download = 'DD90_PCB_BOM.csv';
+  a.click();
+}
+
+function exportPcbOrderCsv() {
+  var list = PCB_BOM.filter(function(r){ return r.sup==='O' && r.part && r.part!=='삭제'; });
+  var rows = [['No','Sheet','Part Number','Value','Qty','Designator','Size','발주수량','발주처','비고']];
+  list.forEach(function(r){ rows.push([r.no,r.sheet,r.part,r.val,r.qty,r.des,r.size,r.ord_qty||r.qty,r.ord_sup||'',r.note]); });
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download = 'DD90_PCB_발주현황.csv';
+  a.click();
+}
+
 </script>
 </body>
 </html>
