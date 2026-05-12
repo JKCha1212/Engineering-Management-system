@@ -282,6 +282,7 @@ tbody tr:hover{background:var(--surface3)}
   .reg-layout{grid-template-columns:1fr}
   .reg-sidebar{display:none}
 }
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
@@ -600,13 +601,102 @@ tbody tr:hover{background:var(--surface3)}
 // ═══════════════════════════════════
 // DATA
 // ═══════════════════════════════════
-let records = JSON.parse(localStorage.getItem('ecr_records_v2') || '[]');
-let regulations = JSON.parse(localStorage.getItem('ecr_regs_v2') || 'null') || getDefaultRegs();
+
+// ── JSONBin.io 실시간 공유 DB ─────────────────────────────
+const ECR_API_KEY = '$2a$10$vVecVLFVpk11mLL5StKH6O7V9YuIOKFjvMs/DuVsJ.N.G7wNP0aHW';
+const ECR_BIN_URL = 'https://api.jsonbin.io/v3/b/6a02c5bdc0954111d80e9ed1';
+let isSyncing = false;
+let lastEcrTs = 0;
+
+async function jbGet() {
+  const res = await fetch(ECR_BIN_URL + '/latest', {
+    headers: { 'X-Master-Key': ECR_API_KEY }
+  });
+  const json = await res.json();
+  return json.record;
+}
+
+async function jbSet(data) {
+  await fetch(ECR_BIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': ECR_API_KEY },
+    body: JSON.stringify(data)
+  });
+}
+
+async function saveRecords() {
+  try {
+    const cur = await jbGet();
+    await jbSet({ records, regulations, ts: Date.now() });
+    showToast('✓ 저장 완료 — 모든 사용자에게 반영됩니다', 'success');
+  } catch(e) { showToast('저장 실패 — 네트워크를 확인해주세요', 'error'); }
+}
+
+async function saveRegs() {
+  try {
+    await jbSet({ records, regulations, ts: Date.now() });
+  } catch(e) { console.warn('규정 저장 실패', e); }
+}
+
+async function loadFromJsonBin() {
+  try {
+    const data = await jbGet();
+    if(data && data.records && data.records.length > 0) {
+      records = data.records;
+    }
+    if(data && data.regulations) {
+      regulations = data.regulations;
+    }
+    if(data && data.ts) lastEcrTs = data.ts;
+    return !!(data && (data.records || data.regulations));
+  } catch(e) { console.warn('불러오기 실패', e); return false; }
+}
+
+// 8초마다 자동 동기화
+async function autoSyncEcr() {
+  if(isSyncing) return;
+  isSyncing = true;
+  try {
+    const data = await jbGet();
+    if(data && data.ts && data.ts > lastEcrTs) {
+      lastEcrTs = data.ts;
+      if(data.records) records = data.records;
+      if(data.regulations) regulations = data.regulations;
+      renderTable();
+      updateSyncTime();
+    }
+  } catch(e) {} finally { isSyncing = false; }
+}
+
+function updateSyncTime() {
+  const el = document.getElementById('ecr-sync-status');
+  if(el) {
+    const now = new Date();
+    el.textContent = '동기화 ' + now.getHours() + ':' +
+      String(now.getMinutes()).padStart(2,'0') + ':' +
+      String(now.getSeconds()).padStart(2,'0');
+  }
+}
+
+function showToast(msg, type) {
+  let t = document.getElementById('ecr-toast');
+  if(!t) {
+    t = document.createElement('div');
+    t.id = 'ecr-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:10px 18px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;z-index:9999;transition:opacity .3s;opacity:0;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.style.background = type === 'error' ? '#c0392b' : '#3B6D11';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(function(){ t.style.opacity = '0'; }, 3000);
+}
+let records = [];
+let regulations = getDefaultRegs();
 let editingId = null;
 let editingRegIdx = null;
 
-function saveRecords() { localStorage.setItem('ecr_records_v2', JSON.stringify(records)); }
-function saveRegs()    { localStorage.setItem('ecr_regs_v2', JSON.stringify(regulations)); }
+// saveRecords & saveRegs → JSONBin 위에서 정의됨
 
 // EO Number 자동 생성: EO{연도}{순번3자리}
 function nextEoNumber() {
@@ -1262,6 +1352,16 @@ updateCSProgress();
 updateDate();
 setInterval(updateDate, 30000);
 document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+// JSONBin 초기화
+(async function() {
+  try {
+    const restored = await loadFromJsonBin();
+    renderTable();
+    if(restored) showToast('✓ 공유 데이터 불러오기 완료', 'success');
+  } catch(e) { renderTable(); }
+  setInterval(autoSyncEcr, 8000);
+})();
 </script>
 </body>
 </html>

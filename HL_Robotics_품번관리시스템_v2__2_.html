@@ -594,6 +594,7 @@
     content: ''; flex: 1; height: 1px; background: var(--border);
   }
 
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
@@ -1076,6 +1077,52 @@
 <div class="notif" id="notif"></div>
 
 <script>
+
+// ── JSONBin.io 실시간 공유 DB ─────────────────────────────
+const HL_API_KEY = '$2a$10$vVecVLFVpk11mLL5StKH6O7V9YuIOKFjvMs/DuVsJ.N.G7wNP0aHW';
+const HL_BIN_URL = 'https://api.jsonbin.io/v3/b/6a02c5bdc0954111d80e9ed3';
+
+async function hlJbGet() {
+  const res = await fetch(HL_BIN_URL + '/latest', {
+    headers: { 'X-Master-Key': HL_API_KEY }
+  });
+  return (await res.json()).record;
+}
+async function hlJbSet(data) {
+  await fetch(HL_BIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': HL_API_KEY },
+    body: JSON.stringify(data)
+  });
+}
+
+// window.storage 폴리필 → JSONBin으로 라우팅
+let _hlCache = {};
+window.storage = {
+  get: async function(key) {
+    if(!_hlCache._loaded) {
+      try {
+        const data = await hlJbGet();
+        if(data) _hlCache = data;
+        _hlCache._loaded = true;
+      } catch(e) { _hlCache._loaded = true; }
+    }
+    if(_hlCache[key] !== undefined) return { key, value: _hlCache[key] };
+    throw new Error('Key not found: ' + key);
+  },
+  set: async function(key, value) {
+    _hlCache[key] = value;
+    _hlCache._loaded = true;
+    try { await hlJbSet(_hlCache); } catch(e) { console.warn('JSONBin 저장 실패', e); }
+    return { key, value };
+  },
+  delete: async function(key) {
+    delete _hlCache[key];
+    try { await hlJbSet(_hlCache); } catch(e) {}
+    return { key, deleted: true };
+  }
+};
+
 // =============================================
 // DATA
 // =============================================
