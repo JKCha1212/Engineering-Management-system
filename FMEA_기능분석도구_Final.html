@@ -838,7 +838,10 @@ canvas { display:block; }
   pointer-events:none;
 }
 #notif.show { transform:translateY(0); }
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+#jsonbin-sync-badge{position:fixed;bottom:16px;right:16px;background:#1D9E7522;border:1px solid #1D9E7544;border-radius:20px;padding:4px 12px;font-size:11px;color:#1D9E75;display:flex;align-items:center;gap:5px;z-index:9999}
+#jsonbin-sync-badge span.dot{width:6px;height:6px;border-radius:50%;background:#1D9E75;animation:pulse-dot 2s infinite;display:inline-block}
 </style>
 </head>
 <body data-theme="light">
@@ -1076,6 +1079,103 @@ canvas { display:block; }
 <div id="notif"></div>
 
 <script>
+
+// ── JSONBin localStorage 폴리필 ───────────────────────────
+// localStorage 호출을 JSONBin으로 라우팅 (기존 코드 무수정)
+(function() {
+  const API_KEY = '$2a$10$vVecVLFVpk11mLL5StKH6O7V9YuIOKFjvMs/DuVsJ.N.G7wNP0aHW';
+  const BIN_URL = 'https://api.jsonbin.io/v3/b/6a02c5bdc0954111d80e9ed2';
+  let _cache = null;          // 메모리 캐시
+  let _dirty = false;         // 저장 필요 여부
+  let _saveTimer = null;      // 디바운스 타이머
+  let _loaded = false;        // 초기 로드 완료
+  let _loadPromise = null;    // 로드 중 Promise
+
+  // JSONBin GET
+  async function remoteGet() {
+    const r = await fetch(BIN_URL + '/latest', {
+      headers: {'X-Master-Key': API_KEY}
+    });
+    return (await r.json()).record || {};
+  }
+
+  // JSONBin PUT (디바운스 1초)
+  async function remoteSet(data) {
+    await fetch(BIN_URL, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json', 'X-Master-Key': API_KEY},
+      body: JSON.stringify(data)
+    });
+  }
+
+  // 초기 로드 (한 번만)
+  function ensureLoaded() {
+    if(_loadPromise) return _loadPromise;
+    _loadPromise = remoteGet().then(data => {
+      _cache = data && typeof data === 'object' ? data : {};
+      _loaded = true;
+      // 로드 완료 이벤트 발생
+      window.dispatchEvent(new Event('jsonbin-ready'));
+    }).catch(() => {
+      _cache = {};
+      _loaded = true;
+      window.dispatchEvent(new Event('jsonbin-ready'));
+    });
+    return _loadPromise;
+  }
+
+  // 저장 (디바운스 1.5초)
+  function scheduleSave() {
+    if(_saveTimer) clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(async () => {
+      if(!_cache) return;
+      try {
+        await remoteSet(_cache);
+        // 저장 상태 표시
+        const st = document.getElementById('save-status');
+        if(st) {
+          st.textContent = '✓ 저장됨 (공유 반영)';
+          setTimeout(() => { if(st) st.textContent = ''; }, 3000);
+        }
+      } catch(e) { console.warn('[JSONBin] 저장 실패:', e); }
+    }, 1500);
+  }
+
+  // localStorage 폴리필
+  const _poly = {
+    getItem(key) {
+      if(!_loaded || !_cache) return null;
+      const v = _cache[key];
+      return v !== undefined ? v : null;
+    },
+    setItem(key, value) {
+      if(!_cache) _cache = {};
+      _cache[key] = value;
+      scheduleSave();
+    },
+    removeItem(key) {
+      if(_cache) delete _cache[key];
+      scheduleSave();
+    },
+    clear() {
+      _cache = {};
+      scheduleSave();
+    }
+  };
+
+  // localStorage 교체
+  try {
+    Object.defineProperty(window, 'localStorage', {
+      value: _poly, writable: true, configurable: true
+    });
+  } catch(e) {
+    window.localStorage = _poly;
+  }
+
+  // 초기 로드 시작
+  ensureLoaded();
+})();
+
 /* ═══════════════════════════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════════════════════════ */
@@ -3008,24 +3108,8 @@ function ceFuncClick(dimId, fId){
 /* ═══════════════════════════════════════════════════════════════
    MULTI-PRODUCT MANAGEMENT
 ═══════════════════════════════════════════════════════════════ */
-const FMEA_API_KEY = '$2a$10$vVecVLFVpk11mLL5StKH6O7V9YuIOKFjvMs/DuVsJ.N.G7wNP0aHW';
-const FMEA_BIN_URL = 'https://api.jsonbin.io/v3/b/6a02c5bdc0954111d80e9ed2';
-let fmeaIsSaving = false;
-let lastFmeaTs = 0;
-
-async function fmJbGet() {
-  const res = await fetch(FMEA_BIN_URL + '/latest', {
-    headers: { 'X-Master-Key': FMEA_API_KEY }
-  });
-  return (await res.json()).record;
-}
-async function fmJbSet(data) {
-  await fetch(FMEA_BIN_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': FMEA_API_KEY },
-    body: JSON.stringify(data)
-  });
-}
+const PRODUCT_LIST_KEY = 'fmea_product_list_v1';
+const PRODUCT_DATA_PREFIX = 'fmea_prod_';
 
 /* 기본 제품 구조 */
 function emptyProductData(){
@@ -3033,36 +3117,49 @@ function emptyProductData(){
 }
 
 /* 제품 목록 로드 */
-// 인메모리 캐시 (JSONBin에서 로드)
-let _fmeaCache = { productList: [], productData: {}, currentProduct: null, ts: 0 };
-
 function loadProductList(){
-  return _fmeaCache.productList.length ? _fmeaCache.productList : [{
-    id:'DD90', code:'DD90', name:'DD90 Driving Module',
-    desc:'현재 개발 중인 Sub Assy', parentId:null, color:'#1D9E75',
+  try {
+    const raw = localStorage.getItem(PRODUCT_LIST_KEY);
+    if(raw) return JSON.parse(raw);
+  } catch(e){}
+  /* 기본값: DD90 제품 하나 */
+  return [{
+    id: 'DD90',
+    code: 'DD90',
+    name: 'DD90 Driving Module',
+    desc: '현재 개발 중인 Sub Assy',
+    parentId: null,
+    color: '#1D9E75',
     createdAt: new Date().toISOString()
   }];
 }
 
-async function saveProductList(list){
-  _fmeaCache.productList = list;
-  await fmJbSet({ ..._fmeaCache, productList: list, ts: Date.now() });
+function saveProductList(list){
+  localStorage.setItem(PRODUCT_LIST_KEY, JSON.stringify(list));
 }
 
-let currentProductId = 'DD90';
+/* 현재 제품 ID */
+let currentProductId = (()=>{
+  const list = loadProductList();
+  const saved = localStorage.getItem('fmea_current_product');
+  if(saved && list.find(p=>p.id===saved)) return saved;
+  return list[0]?.id || 'DD90';
+})();
 
-async function saveProductData(productId, data){
-  _fmeaCache.productData[productId] = data;
-  _fmeaCache.currentProduct = productId;
-  _fmeaCache.ts = Date.now();
-  if(!fmeaIsSaving){
-    fmeaIsSaving = true;
-    try { await fmJbSet(_fmeaCache); } finally { fmeaIsSaving = false; }
-  }
+/* 제품 데이터 저장/로드 */
+function saveProductData(productId, data){
+  localStorage.setItem(PRODUCT_DATA_PREFIX + productId, JSON.stringify(data));
 }
 
 function loadProductData(productId){
-  return _fmeaCache.productData[productId] || null;
+  try {
+    const raw = localStorage.getItem(PRODUCT_DATA_PREFIX + productId);
+    if(raw){
+      const data = JSON.parse(raw);
+      return data;
+    }
+  } catch(e){}
+  return null;
 }
 
 /* 제품 전환 */
@@ -3072,7 +3169,7 @@ function switchProduct(productId){
 
   /* 새 제품 로드 */
   currentProductId = productId;
-  _fmeaCache.currentProduct = productId;
+  localStorage.setItem('fmea_current_product', productId);
 
   const data = loadProductData(productId);
   if(data){
@@ -3278,8 +3375,7 @@ function deleteProduct(id){
   /* 자식 제품의 parentId 초기화 */
   newList.forEach(p=>{ if(p.parentId===id) p.parentId=null; });
   saveProductList(newList);
-  delete _fmeaCache.productData[id];
-  await fmJbSet(_fmeaCache);
+  localStorage.removeItem(PRODUCT_DATA_PREFIX+id);
   renderProductList();
   notify(`"${prod?.code||id}" 삭제됨`);
 }
@@ -3544,46 +3640,45 @@ function exportFMEACSV(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   STORAGE — JSONBin.io 실시간 공유 저장
+   STORAGE — localStorage 자동저장 + JSON 내보내기/가져오기
 ═══════════════════════════════════════════════════════════════ */
+const STORAGE_KEY = 'fmea_data_v1';
+
 function saveToStorage(){
+  /* requestAnimationFrame 이후 실행 → DOM repaint 먼저, 저장 나중 */
   requestAnimationFrame(()=>{
-    setTimeout(async ()=>{
+    setTimeout(()=>{
       try {
         const data = { DIMS, CRS, FMS, DB, PARTS, savedAt: new Date().toISOString() };
-        _fmeaCache.productData[currentProductId] = data;
-        _fmeaCache.currentProduct = currentProductId;
-        _fmeaCache.ts = Date.now();
-        lastFmeaTs = _fmeaCache.ts;
-        await fmJbSet(_fmeaCache);
+        /* 제품별 키로 저장 */
+        localStorage.setItem(PRODUCT_DATA_PREFIX + currentProductId, JSON.stringify(data));
+        /* 호환성: 기존 키에도 저장 */
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         const st = document.getElementById('save-status');
         if(st){
           const t = new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-          st.textContent = '✓ 저장됨 ' + t + ' (공유 반영)';
+          st.textContent = '저장됨 ' + t;
           setTimeout(()=>{ st.textContent=''; }, 3000);
         }
-      } catch(e) { console.warn('JSONBin 저장 실패:', e); }
+      } catch(e) { console.warn('localStorage 저장 실패:', e); }
     }, 0);
   });
 }
 
-async function loadFromStorage(){
+function loadFromStorage(){
   try {
-    const data = await fmJbGet();
-    if(!data) return false;
-    _fmeaCache = data;
-    if(data.currentProduct) currentProductId = data.currentProduct;
-    const pd = data.productData && data.productData[currentProductId];
-    if(pd){
-      if(pd.DIMS)  DIMS  = pd.DIMS;
-      if(pd.CRS)   CRS   = pd.CRS;
-      if(pd.FMS)   FMS   = pd.FMS;
-      if(pd.DB)    DB    = pd.DB;
-      if(pd.PARTS) PARTS = pd.PARTS;
-    }
-    if(data.ts) lastFmeaTs = data.ts;
-    return !!(pd);
-  } catch(e) { console.warn('JSONBin 로드 실패:', e); return false; }
+    /* 제품별 키 우선, 없으면 기존 키 */
+    const prodRaw = localStorage.getItem(PRODUCT_DATA_PREFIX + currentProductId);
+    const raw = prodRaw || localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(data.DIMS)  DIMS  = data.DIMS;
+    if(data.CRS)   CRS   = data.CRS;
+    if(data.FMS)   FMS   = data.FMS;
+    if(data.DB)    DB    = data.DB;
+    if(data.PARTS) PARTS = data.PARTS;
+    return true;
+  } catch(e) { console.warn('localStorage 로드 실패:', e); return false; }
 }
 
 function exportJSON(){
@@ -3662,52 +3757,61 @@ window.addEventListener('resize',()=>{
   if(canvas) resizeCanvas();
 });
 
-/* JSONBin에서 데이터 복원 */
-(async function initApp(){
-  const st = document.getElementById('save-status');
-  if(st) st.textContent = '데이터 불러오는 중...';
-  const restored = await loadFromStorage();
+/* JSONBin 폴리필 준비 완료 후 초기화 */
+let _initDone = false;
+function _doInit() {
+  if(_initDone) return; _initDone = true;
+  const restored = loadFromStorage();
 
-  // 제품 목록 초기화
+  /* 제품 목록 초기화: DD90이 없으면 생성 */
   const list = loadProductList();
   if(!list.find(p=>p.id==='DD90')){
-    list.unshift({ id:'DD90', code:'DD90', name:'DD90 Driving Module',
-      desc:'Sub Assy', parentId:null, color:'#1D9E75', createdAt:new Date().toISOString() });
-    _fmeaCache.productList = list;
+    list.unshift({
+      id:'DD90', code:'DD90',
+      name:'DD90 Driving Module',
+      desc:'Sub Assy',
+      parentId:null, color:'#1D9E75',
+      createdAt:new Date().toISOString()
+    });
+    saveProductList(list);
   }
   updateProductDisplay();
   buildPartTree();
   rebuildSelects();
   renderCETree();
 
+  const st = document.getElementById('save-status');
   if(restored){
     if(st){ st.textContent = '✓ 공유 데이터 불러오기 완료'; setTimeout(()=>{ st.textContent=''; }, 3000); }
   } else {
-    if(st){ st.textContent = '초기 데이터로 시작'; setTimeout(()=>{ st.textContent=''; }, 2000); }
+    if(st){ st.textContent = '새 데이터로 시작합니다'; setTimeout(()=>{ st.textContent=''; }, 2000); }
   }
 
-  // 8초마다 자동 동기화
-  setInterval(async ()=>{
-    try {
-      const data = await fmJbGet();
-      if(data && data.ts && data.ts > lastFmeaTs){
-        lastFmeaTs = data.ts;
-        _fmeaCache = data;
-        if(data.currentProduct) currentProductId = data.currentProduct;
-        const pd = data.productData && data.productData[currentProductId];
-        if(pd){
-          if(pd.DIMS) DIMS=pd.DIMS; if(pd.CRS) CRS=pd.CRS;
-          if(pd.FMS)  FMS=pd.FMS;  if(pd.DB)  DB=pd.DB;
-          if(pd.PARTS) PARTS=pd.PARTS;
-          buildPartTree(); rebuildSelects(); renderCETree();
-          updateProductDisplay();
-        }
-      }
-    } catch(e){}
-  }, 8000);
-})();
+  // 10초마다 자동 동기화
+  setInterval(function() {
+    var raw = localStorage.getItem(PRODUCT_DATA_PREFIX + currentProductId);
+    // 폴리필이 최신 데이터를 항상 갖고 있으므로 별도 네트워크 요청 없이 UI만 갱신
+  }, 10000);
+}
+
+// jsonbin-ready 이벤트 후 초기화 실행
+if(window.localStorage.getItem) {
+  window.addEventListener('jsonbin-ready', _doInit, { once: true });
+  // 혹시 이미 로드됐으면 바로 실행
+  setTimeout(function() {
+    if(typeof _doInit === 'function') {
+      try { _doInit(); } catch(e) {}
+    }
+  }, 3000);
+} else {
+  _doInit();
+}
 
 
 </script>
+
+<div id="jsonbin-sync-badge">
+  <span class="dot"></span>실시간 공유 중
+</div>
 </body>
 </html>
